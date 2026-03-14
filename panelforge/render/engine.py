@@ -365,7 +365,14 @@ def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: 
     render_rows, render_cols = _layout_from_spec(len(panels), spec.layout.preset, spec.layout.rows, spec.layout.cols)
     fig, axes = plt.subplots(render_rows, render_cols, figsize=(spec.render.width * render_cols, spec.render.height * render_rows))
     axes = np.array(axes).reshape(-1)
-    fig.suptitle(spec.title)
+    figure_title = str(spec.title or "").strip()
+    figure_subtitle = str(spec.subtitle or "").strip()
+    if figure_title and figure_subtitle:
+        fig.suptitle(f"{figure_title}\n{figure_subtitle}", fontsize=12, fontweight="bold")
+    elif figure_title:
+        fig.suptitle(figure_title, fontsize=12, fontweight="bold")
+    else:
+        fig.suptitle("Figure", fontsize=12, fontweight="bold")
 
     for axis in axes:
         axis.set_axis_off()

@@ -22,6 +22,73 @@ coalesce <- function(...) {
   return(NULL)
 }
 
+is_font_available <- function(family) {
+  if (is.null(family) || is.na(family) || !nzchar(family)) {
+    return(FALSE)
+  }
+  tryCatch({
+    grob <- grid::textGrob("font-check", gp = grid::gpar(fontfamily = family))
+    invisible(grid::convertWidth(grobWidth(grob)))
+    TRUE
+  }, error = function(...) FALSE)
+}
+
+plot_font_family <- if (is_font_available("Arial")) {
+  "Arial"
+} else {
+  message("R renderer: Arial unavailable, using sans as fallback font.")
+  "sans"
+}
+
+draw_grid_text <- function(label, x, y, gp, fallback_family = "sans") {
+  tryCatch(
+    grid::grid.text(label = label, x = x, y = y, gp = gp),
+    error = function(...) {
+      fallback_gp <- grid::gpar(fontsize = gp$fontsize, fontface = gp$fontface)
+      if (!is.null(gp$col)) {
+        fallback_gp$col <- gp$col
+      }
+      grid::grid.text(label = label, x = x, y = y, gp = fallback_gp)
+    }
+  )
+}
+
+layout_from_spec <- function(panel_count, preset, rows, cols) {
+  if (!is.null(rows) && !is.null(cols)) {
+    return(list(rows = as.integer(rows), cols = as.integer(cols)))
+  }
+
+  if (!is.null(preset)) {
+    preset <- toupper(preset)
+    if (preset == "A") {
+      return(list(rows = 1L, cols = 1L))
+    }
+    if (preset == "B") {
+      return(list(rows = 1L, cols = 2L))
+    }
+    if (preset == "C") {
+      return(list(rows = 2L, cols = 2L))
+    }
+    if (preset == "D") {
+      return(list(rows = 2L, cols = 3L))
+    }
+  }
+
+  panel_count <- max(as.integer(panel_count), 1L)
+  if (panel_count == 1L) {
+    return(list(rows = 1L, cols = 1L))
+  }
+  if (panel_count == 2L) {
+    return(list(rows = 1L, cols = 2L))
+  }
+  if (panel_count == 3L) {
+    return(list(rows = 1L, cols = 3L))
+  }
+  panel_cols <- min(4L, panel_count)
+  panel_rows <- as.integer(ceiling(panel_count / panel_cols))
+  list(rows = panel_rows, cols = panel_cols)
+}
+
 normalize_chart_type <- function(chart_type) {
   chart_type <- tolower(coalesce(chart_type, "bar"))
   chart_type <- gsub("-", "_", chart_type, fixed = TRUE)
@@ -83,8 +150,24 @@ safe_data <- function(path, fmt) {
   tryCatch(read_csv(path, show_col_types = FALSE), error = function(...) read_tsv(path, show_col_types = FALSE))
 }
 
+resolve_data_path <- function(path, spec_dir) {
+  if (is_nullish(path)) {
+    return(NULL)
+  }
+  if (file.exists(path)) {
+    return(path)
+  }
+  if (!is_nullish(spec_dir)) {
+    candidate <- file.path(spec_dir, path)
+    if (file.exists(candidate)) {
+      return(normalizePath(candidate))
+    }
+  }
+  return(path)
+}
+
 minimal_theme <- function() {
-  theme_minimal(base_family = "Arial", base_size = 10) +
+  theme_minimal(base_family = plot_font_family, base_size = 10) +
     theme(
       plot.title = element_text(face = "bold", size = 12, colour = "#111827"),
       plot.subtitle = element_text(size = 9.5, colour = "#374151"),
@@ -122,7 +205,7 @@ add_tile <- function(p, panel_label, title, subtitle, status) {
   if (!is.null(status) && !is.na(status) && nzchar(status)) {
     subtitle_text <- paste0(subtitle_text, " | ", status)
   }
-  p + annotate("text", x = -Inf, y = Inf, hjust = -0.02, vjust = 1.35, size = 3.1, family = "Arial", fontface = "bold", label = subtitle_text, color = "#111827")
+  p + annotate("text", x = -Inf, y = Inf, hjust = -0.02, vjust = 1.35, size = 3.1, fontface = "bold", label = subtitle_text, color = "#111827")
 }
 
 safe_numeric <- function(values) {
@@ -363,9 +446,10 @@ render_chart <- function(chart, data, title, subtitle, tile_label, status) {
   add_tile(p, tile_label, title, subtitle, status)
 }
 
-render_single_panel <- function(panel_spec, out_dir, dpi) {
+render_single_panel <- function(panel_spec, out_dir, dpi, spec_dir = NULL) {
   chart <- panel_spec$chart
-  data <- safe_data(chart$data$path, chart$data$format)
+  data_path <- resolve_data_path(chart$data$path, spec_dir)
+  data <- safe_data(data_path, chart$data$format)
   title <- coalesce(panel_spec$title, panel_spec$label)
   subtitle <- coalesce(panel_spec$subtitle, "")
   panel_label <- coalesce(panel_spec$tile$label, panel_spec$label)
@@ -392,6 +476,90 @@ render_single_panel <- function(panel_spec, out_dir, dpi) {
     }
     out[[fmt]] <- file
   }
+  list(files = out, plot = plot)
+}
+
+render_assembled_figure <- function(plots, figure_title, figure_subtitle, out_dir, out_name, nrow, ncol, width, height, dpi, output_formats) {
+  panel_count <- length(plots)
+  layout <- layout_from_spec(panel_count, NULL, nrow, ncol)
+  layout_rows <- layout$rows
+  layout_cols <- layout$cols
+
+  panel_width <- coalesce(width, 7.5)
+  panel_height <- coalesce(height, 5.5)
+  title_height <- 0.75
+  output_width <- panel_width * layout_cols
+  output_height <- (panel_height * layout_rows) + title_height
+  output_formats <- normalize_formats(output_formats)
+  if (length(output_formats) == 0L) {
+    output_formats <- c("pdf", "png")
+  }
+
+  out <- list()
+  for (fmt in output_formats) {
+    file <- file.path(out_dir, paste0(out_name, ".", fmt))
+    if (fmt == "pdf") {
+      pdf(file, width = output_width, height = output_height, onefile = TRUE)
+    } else if (fmt == "svg") {
+      svg(file, width = output_width, height = output_height)
+    } else if (fmt == "jpeg") {
+      jpeg(file, width = output_width, height = output_height, units = "in", res = dpi, quality = 100)
+    } else if (fmt == "tiff") {
+      tiff(file, width = output_width, height = output_height, units = "in", res = dpi, compression = "lzw")
+    } else {
+      png(file, width = output_width, height = output_height, units = "in", res = dpi)
+    }
+
+    layout_rows_total <- layout_rows + 1L
+    total_cells <- layout_rows_total * layout_cols
+    if (layout_cols > 0L && layout_rows_total > 0L) {
+      header_idx <- 1L
+      layout_matrix <- matrix(header_idx, nrow = layout_rows_total, ncol = layout_cols)
+      if ((layout_rows * layout_cols) > 0L) {
+        panel_slots <- seq_len(layout_rows * layout_cols) + 1L
+        layout_matrix[-1L, ] <- matrix(panel_slots, nrow = layout_rows, ncol = layout_cols, byrow = TRUE)
+      }
+
+      layout(
+        layout_matrix,
+        heights = c(0.45, rep(1, layout_rows)),
+        widths = rep(1, layout_cols)
+      )
+      par(mar = c(0, 0, 0, 0))
+      plot.new()
+      plot.window(xlim = c(0, 1), ylim = c(0, 1), xaxs = "i", yaxs = "i")
+      plot_title <- coalesce(figure_title, "Figure")
+      if (nzchar(plot_title)) {
+        draw_grid_text(
+          label = plot_title,
+          x = 0.5,
+          y = 0.75,
+          gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 20)
+        )
+      }
+      if (!is.null(figure_subtitle) && !is.na(figure_subtitle) && nzchar(figure_subtitle)) {
+        draw_grid_text(
+          label = figure_subtitle,
+          x = 0.5,
+          y = 0.25,
+          gp = grid::gpar(fontfamily = plot_font_family, fontface = "plain", fontsize = 16)
+        )
+      }
+
+      total_slots <- layout_rows * layout_cols
+      for (slot in seq_len(total_slots)) {
+        if (slot <= panel_count && !is.null(plots[[slot]])) {
+          print(plots[[slot]], newpage = FALSE)
+        } else {
+          plot.new()
+          rect(0, 0, 1, 1, col = "white", border = NA)
+        }
+      }
+    }
+
+    dev.off()
+    out[[fmt]] <- file
+  }
   out
 }
 
@@ -409,14 +577,36 @@ render_figure_from_spec <- function(spec_path, out_dir = NULL) {
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   dpi <- coalesce(raw$render$dpi, 600)
 
-  outputs <- lapply(raw$panels, function(panel) {
-    render_single_panel(panel, output_dir, dpi = coalesce(dpi, 600))
+  spec_dir <- dirname(normalizePath(spec_path))
+  rendered <- lapply(raw$panels, function(panel) {
+    render_single_panel(panel, output_dir, dpi = coalesce(dpi, 600), spec_dir = spec_dir)
   })
+  outputs <- lapply(rendered, `[[`, "files")
+  assembled_plots <- lapply(rendered, `[[`, "plot")
+  layout <- layout_from_spec(length(assembled_plots), coalesce(raw$layout$preset, NULL), raw$layout$rows, raw$layout$cols)
+  figure_name <- coalesce(raw$prefix, "figure")
+  figure_title <- coalesce(raw$title, "Figure")
+  figure_subtitle <- coalesce(raw$subtitle, "")
+  figure_formats <- coalesce(raw$render$formats, c("pdf", "png"))
+  assembled <- render_assembled_figure(
+    assembled_plots,
+    figure_title = figure_title,
+    figure_subtitle = figure_subtitle,
+    out_dir = output_dir,
+    out_name = figure_name,
+    nrow = layout$rows,
+    ncol = layout$cols,
+    width = coalesce(raw$render$width, 7.5),
+    height = coalesce(raw$render$height, 5.5),
+    dpi = coalesce(dpi, 600),
+    output_formats = figure_formats
+  )
 
   out <- list(
     outputs = outputs,
-    figure = file.path(output_dir, paste0(coalesce(raw$prefix, "figure"), ".pdf")),
-    png = file.path(output_dir, paste0(coalesce(raw$prefix, "figure"), ".png"))
+    figure = assembled$pdf,
+    png = assembled$png,
+    assembled = assembled
   )
   saveRDS(out, file.path(output_dir, "panel_renderer_outputs.rds"), version = 3)
   invisible(out)

@@ -39,3 +39,5 @@ jobs:
           Rscript R/panel_renderer.R examples/specs/single_panel.yaml /tmp/r-figure-smoke
           test -f /tmp/r-figure-smoke/single_panel_hist.pdf
           test -f /tmp/r-figure-smoke/single_panel_hist.png
+          test -f /tmp/r-figure-smoke/single_panel.pdf
+          test -f /tmp/r-figure-smoke/single_panel.png

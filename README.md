@@ -18,7 +18,7 @@ It supports:
 
 - `panelforge/`: Core Python package.
 - `R/panel_renderer.R`: Minimal ggplot2-compatible renderer with shared schema
-  contracts.
+  contracts and assembled figure output in addition to per-panel outputs.
 - `examples/specs/`: Spec templates.
 - `examples/templates/`: Small manifest and run examples.
 - `tests/`: Unit tests for schema, transforms, registry and render contract.
@@ -103,7 +103,8 @@ Mandatory behavior:
 ## R renderer
 
 `R/panel_renderer.R` accepts the same YAML specification and writes PDF+PNG files
-for each panel. It includes a minimal Arial theme and tile annotations.
+for every panel and also generates assembled multipanel outputs (`<prefix>.pdf` and
+`<prefix>.png`) from the configured layout.
 
 ## Tests and CI
 
