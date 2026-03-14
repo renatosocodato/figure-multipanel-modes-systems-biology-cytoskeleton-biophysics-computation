@@ -175,7 +175,7 @@ minimal_theme <- function() {
       panel.grid.major = element_line(color = "#E5E7EB", linewidth = 0.25),
       panel.grid.minor = element_blank(),
       panel.border = element_blank(),
-      axis.ticks = element_line(color = "#9CA3AF", size = 0.3),
+      axis.ticks = element_line(color = "#9CA3AF", linewidth = 0.3),
       legend.position = "none"
     )
 }

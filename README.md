@@ -1,58 +1,113 @@
-Universal Multipanel Figure Factory
-=================================
+# Panelforge
 
-`panelforge` is a schema-first, reusable figure pipeline for analysis repos that
-need scalable multipanel outputs across biology, cytoskeleton biophysics, and
-computational biology projects.
+[![CI](https://github.com/renatosocodato/figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation/actions/workflows/ci.yml/badge.svg)](https://github.com/renatosocodato/figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/renatosocodato/figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation)](https://github.com/renatosocodato/figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation/releases)
+[![License](https://img.shields.io/github/license/renatosocodato/figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation)](LICENSE)
 
-It supports:
+Schema-first multipanel figure generation for systems biology, cytoskeleton biophysics, and computational biology workflows.
 
-- A permissive chart contract for Python and R rendering.
-- Mandatory high-resolution PNG + vector PDF panel outputs.
-- Global minimal Arial-based styling with panel tile metadata.
-- Wide-scope discovery and diagnostics across `/Users/renatosocodato`.
-- Palette mutation metadata and manifest reproducibility records.
-- Legacy adapters for existing 4-panel and supplementary R workflows.
+`panelforge` is built to be cloned into analysis repositories when the modeling layer is ready to become figures. It keeps the interface simple, the defaults strict where they matter, and the rendering behavior permissive where real analysis pipelines tend to be messy.
 
-## Repository Layout
+## Why it is easy to clone
 
-- `panelforge/`: Core Python package.
-- `R/panel_renderer.R`: Minimal ggplot2-compatible renderer with shared schema
-  contracts and assembled figure output in addition to per-panel outputs.
-- `examples/specs/`: Spec templates.
-- `examples/templates/`: Small manifest and run examples.
-- `tests/`: Unit tests for schema, transforms, registry and render contract.
-- `.github/workflows/`: CI with Python + R smoke checks.
+- One bootstrap command creates the local environment and installs the package.
+- One smoke command validates Python tests and example renders.
+- One schema powers both Python and R renderers.
+- Every panel and assembled figure emits `pdf` and `png` by default.
+- Tile metadata, subtitles, manifests, and palette fingerprints are built in.
 
-## Installation
+## Quick start
 
 ```bash
+git clone https://github.com/renatosocodato/figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation.git
 cd figure-multipanel-modes-systems-biology-cytoskeleton-biophysics-computation
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt
-pip install -e .
+make bootstrap
+make demo-single
+make demo-four
+make smoke
 ```
 
-## CLI
+If you want a fast orientation first:
 
 ```bash
-panelforge discover --roots /Users/renatosocodato --output discovery.json
-panelforge inspect examples/specs/single_panel.yaml
-panelforge render examples/specs/legacy_4panel.yaml --out /tmp/figures
-panelforge tile examples/specs/single_panel.yaml
-panelforge manifest /tmp/figures/figure/run_manifest.json --output /tmp/figures/manifest.json
+make help
 ```
 
-Legacy bridges:
+## First-run outputs
+
+After the demo commands you will have both per-panel and assembled figure artifacts under `outputs/`.
+
+```text
+outputs/
+├── single/
+│   ├── single_panel_hist.pdf
+│   ├── single_panel_hist.png
+│   ├── single_panel.pdf
+│   ├── single_panel.png
+│   └── render_manifest.json
+└── four/
+    ├── four_panel_scatter.pdf
+    ├── four_panel_heatmap.png
+    ├── four_panel.pdf
+    ├── four_panel.png
+    └── render_manifest.json
+```
+
+## Repo shape
+
+```text
+.
+├── panelforge/      Python package: schema, charts, renderers, manifests, CLI
+├── R/               ggplot2-based renderer with the same figure contract
+├── examples/        data, specs, and starter templates
+├── scripts/         bootstrap and smoke helpers for local clones
+├── tests/           schema, palette, render, transform, and CLI coverage
+├── .github/         CI plus issue and PR templates
+├── Makefile         memorable local commands
+└── README.md
+```
+
+## Core behavior
+
+- Declarative figure specs with figure title, figure subtitle, panel order, tile metadata, chart bindings, and render policies.
+- Multipanel layouts with presets plus custom grids.
+- Broad chart coverage across univariate, bivariate, multivariate, compositional, and diagnostic plot families.
+- ColorBrewer-backed palette resolution with deterministic mutation metadata.
+- Discovery tooling for large local trees such as `/Users/renatosocodato`.
+- Manifest generation with checksums, output contracts, timestamps, and spec signatures.
+- Legacy adapters for older 4-panel and supplementary workflows.
+
+## Output contract
+
+The default output policy is fixed and publication-friendly:
+
+- Every panel emits `*.pdf` and `*.png`
+- Every assembled figure emits `*.pdf` and `*.png`
+- PNG output defaults to high resolution
+- Additional formats such as `svg` can be requested explicitly without replacing `pdf` and `png`
+
+## Commands you will actually use
 
 ```bash
-panelforge render-legacy-main --paper-root /path/to/paper --phase 1 --out /tmp/figures
-panelforge render-legacy-supplementary --paper-root /path/to/paper --phase 1 --panel-label S1 --out /tmp/figures
+make bootstrap
+make inspect
+make discover
+make render-single
+make render-four
+make smoke
+make clean
 ```
 
-## Spec format (minimal)
+Direct CLI equivalents:
+
+```bash
+panelforge inspect examples/specs/four_panel.yaml
+panelforge render examples/specs/single_panel.yaml --out outputs/single
+panelforge discover --roots /Users/renatosocodato --output outputs/discovery.json
+panelforge tile examples/specs/four_panel.yaml --output outputs/tile.json
+```
+
+## Minimal spec
 
 ```yaml
 title: "Figure title"
@@ -72,7 +127,7 @@ panels:
     chart:
       chart_type: scatter
       data:
-        path: "data.csv"
+        path: "examples/data/multimodal_demo.csv"
         format: "csv"
       mappings:
         x: "x"
@@ -85,39 +140,26 @@ render:
   height: 6.0
 ```
 
-Mandatory behavior:
+## Style contract
 
-- Figure and panel subtitles are emitted into panel tiles.
-- Every rendered panel gets both:
-  - `*.pdf` (vector)
-  - `*.png` (at least 600 DPI)
-- Every run can emit `run_manifest.json` with checksums.
+- Arial-first rendering is enforced where the environment supports it.
+- Figure and panel subtitles are first-class metadata, not afterthoughts.
+- Panel tiles carry label, title, subtitle, status, and outcome cues.
+- The visual baseline stays minimal and restrained so panels can mix across analysis domains without looking incoherent.
 
-## Python package API
+## Python and R parity
 
-- `panelforge.schema`: pydantic schema models (versioned).
-- `panelforge.render.render_spec(...)`: programmatic rendering entry.
-- `panelforge.discovery.phase_discovery(...)`: discovery of `analysis_*` directories.
-- `panelforge.palette.resolve_palette(...)`: ColorBrewer-backed palette contract.
+Python and R both render from the same YAML structure.
 
-## R renderer
+- Python path: `panelforge render ...`
+- R path: `Rscript R/panel_renderer.R examples/specs/single_panel.yaml outputs/r-run`
 
-`R/panel_renderer.R` accepts the same YAML specification and writes PDF+PNG files
-for every panel and also generates assembled multipanel outputs (`<prefix>.pdf` and
-`<prefix>.png`) from the configured layout.
+The R renderer prefers Arial when available and degrades safely to `sans` when it is not installed.
 
-## Tests and CI
+## Contributing
 
-```bash
-pytest -q
-```
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). If you add a chart family, adapter, or manifest field, update `examples/specs/` and `tests/` in the same change so the repo stays clone-safe for the next user.
 
-CI runs:
+## Current release
 
-- Schema validation and transform tests (Python)
-- Chart registry smoke tests (Python)
-- Minimal R smoke render of one template
-
-## Versioning
-
-Schema: `1.0.0`
+The repository is published and currently aligned to `v0.1.3`.
