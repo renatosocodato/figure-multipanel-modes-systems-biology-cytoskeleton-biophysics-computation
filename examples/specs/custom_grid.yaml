@@ -1,0 +1,119 @@
+title: "Custom grid example"
+subtitle: "Custom rows/cols + mixed chart families"
+layout:
+  rows: 2
+  cols: 3
+panels:
+  - label: "A"
+    title: "Lollipop"
+    subtitle: "Numeric trend"
+    tile:
+      label: "A"
+      title: "Lollipop"
+      subtitle: "Univariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "lollipop"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "time"
+        y: "y"
+    output_name: "custom_grid_A"
+  - label: "B"
+    title: "KDE"
+    subtitle: "Density"
+    tile:
+      label: "B"
+      title: "KDE"
+      subtitle: "Univariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "kde"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "value"
+    output_name: "custom_grid_B"
+  - label: "C"
+    title: "Violin"
+    subtitle: "Distribution"
+    tile:
+      label: "C"
+      title: "Violin"
+      subtitle: "Univariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "violin"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "group"
+        y: "value"
+    output_name: "custom_grid_C"
+  - label: "D"
+    title: "Correlogram"
+    subtitle: "Correlation heat layout"
+    tile:
+      label: "D"
+      title: "Correlogram"
+      subtitle: "Multivariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "correlogram"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+    output_name: "custom_grid_D"
+  - label: "E"
+    title: "PCA scatter"
+    subtitle: "Projection"
+    tile:
+      label: "E"
+      title: "PCA"
+      subtitle: "Dim reduction"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "pca"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+    output_name: "custom_grid_E"
+  - label: "F"
+    title: "QQ"
+    subtitle: "Diagnostics"
+    tile:
+      label: "F"
+      title: "QQ"
+      subtitle: "Diagnostic"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "qq"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "value"
+    output_name: "custom_grid_F"
+prefix: "custom_grid"
+palette:
+  source: "colorbrewer"
+  family: "diverging"
+  palette: "RdBu"
+  role: "comparison"
+render:
+  formats:
+    - "pdf"
+    - "png"
+  dpi: 600
+  width: 4.5
+  height: 3.8

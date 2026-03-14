@@ -1,0 +1,43 @@
+{
+  "figure_label": "example_figure",
+  "command": "panelforge render",
+  "timestamp": "2026-03-14T00:00:00Z",
+  "schema_version": "1.0.0",
+  "panels": [
+    {
+      "panel_label": "A",
+      "status": "ok",
+      "file": "output/panel_A.pdf",
+      "width_in": 8.0,
+      "height_in": 6.0,
+      "checksum": "e3b0c44298fc1c149afbf4c8996fb924"
+    },
+    {
+      "panel_label": "B",
+      "status": "ok",
+      "file": "output/panel_B.pdf",
+      "width_in": 8.0,
+      "height_in": 6.0,
+      "checksum": "e3b0c44298fc1c149afbf4c8996fb924"
+    }
+  ],
+  "figures": [
+    {
+      "label": "example_figure",
+      "status": "ok",
+      "file": "output/example_figure.pdf",
+      "width_in": 16.0,
+      "height_in": 12.0,
+      "checksum": "e3b0c44298fc1c149afbf4c8996fb924"
+    }
+  ],
+  "environment": {
+    "python": "3.12",
+    "platform": "darwin"
+  },
+  "palette": {
+    "palette_id": "colorbrewer:qualitative:Set2:primary",
+    "palette_mutation": "none",
+    "palette_hash": "placeholder"
+  }
+}

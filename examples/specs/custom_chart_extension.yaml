@@ -1,0 +1,37 @@
+title: "Custom chart extension fixture"
+subtitle: "Shows permissive fallback when custom chart handler is not registered"
+layout:
+  rows: 1
+  cols: 1
+panels:
+  - label: "A"
+    title: "Fallback from custom type"
+    subtitle: "Registry extension demo"
+    tile:
+      label: "A"
+      title: "Custom"
+      subtitle: "Plugin placeholder"
+      status: "pass"
+      outcome: "warn"
+    chart:
+      chart_type: "custom_raincloud"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "x"
+        y: "y"
+    output_name: "custom_extension_A"
+prefix: "custom_chart_extension"
+palette:
+  source: "colorbrewer"
+  family: "qualitative"
+  palette: "Set1"
+  role: "annotation"
+render:
+  formats:
+    - "pdf"
+    - "png"
+  dpi: 600
+  width: 7.0
+  height: 5.0

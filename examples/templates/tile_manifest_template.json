@@ -1,0 +1,18 @@
+{
+  "status": "ok",
+  "figure_title": "Tile-aware figure",
+  "figure_subtitle": "Panel tile helper output",
+  "panel_count": 2,
+  "tiles": [
+    {
+      "panel": "A",
+      "panel_title": "Panel A title",
+      "panel_subtitle": "Panel A subtitle",
+      "tile_label": "A",
+      "tile_title": "Tile title A",
+      "tile_subtitle": "Tile subtitle A",
+      "tile_status": "pass",
+      "outcome": "pass"
+    }
+  ]
+}

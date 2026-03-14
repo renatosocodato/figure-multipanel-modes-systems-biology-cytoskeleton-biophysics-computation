@@ -1,0 +1,82 @@
+title: "Phase coverage demo"
+subtitle: "Four-panel permissive layout fixture"
+layout:
+  preset: "D"
+panels:
+  - label: "A"
+    title: "A — Bivariate scatter"
+    subtitle: "x/y relation with grouping"
+    tile:
+      label: "A"
+      title: "Scatter"
+      subtitle: "Bivariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "scatter"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "x"
+        y: "y"
+        group: "group"
+    output_name: "phase_panel_A"
+  - label: "B"
+    title: "B — Box by category"
+    subtitle: "Compositional comparison"
+    tile:
+      label: "B"
+      title: "Box"
+      subtitle: "Univariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "box"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "category"
+        y: "value"
+    output_name: "phase_panel_B"
+  - label: "C"
+    title: "C — Heatmap summary"
+    subtitle: "Correlation context"
+    tile:
+      label: "C"
+      title: "Heatmap"
+      subtitle: "Multivariate"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "heatmap"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+    output_name: "phase_panel_C"
+  - label: "D"
+    title: "D — ROC proxy"
+    subtitle: "Diagnostic fallback"
+    tile:
+      label: "D"
+      title: "ROC"
+      subtitle: "Diagnostics"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "roc"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        group: "group"
+        y: "prediction"
+prefix: "four_panel"
+render:
+  formats:
+    - "pdf"
+    - "png"
+  dpi: 600
+  width: 6.0
+  height: 5.0

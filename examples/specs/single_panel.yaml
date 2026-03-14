@@ -1,0 +1,41 @@
+title: "Single panel demo"
+subtitle: "Panel-level pipeline smoke and Arial tile checks"
+layout:
+  rows: 1
+  cols: 1
+  labels: ["A"]
+panels:
+  - label: "A"
+    title: "Distribution summary"
+    subtitle: "Fallback-aware histogram baseline"
+    tile:
+      label: "A"
+      title: "Histogram"
+      subtitle: "Per-panel tile"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "histogram"
+      data:
+        path: "../data/multimodal_demo.csv"
+        format: "csv"
+      mappings:
+        x: "x"
+      options:
+        bins: 6
+    transforms: []
+    output_name: "single_panel_hist"
+prefix: "single_panel"
+render:
+  formats:
+    - "pdf"
+    - "png"
+  dpi: 600
+  width: 7.0
+  height: 5.0
+palette:
+  source: "colorbrewer"
+  family: "qualitative"
+  palette: "Set2"
+  role: "primary"
+  mutation_mode: "none"
