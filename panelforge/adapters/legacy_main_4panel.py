@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 from ..schema import FigureSpec, DataSourceSpec, ChartSpec, MappingSpec, PanelSpec, PanelTileSpec, PaletteSpec, RenderSpec
 

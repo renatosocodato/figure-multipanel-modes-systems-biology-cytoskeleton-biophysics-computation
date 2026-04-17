@@ -17,7 +17,7 @@ from ..schema import FigureSpec, PaletteSpec
 from ..charts.base import RenderContext
 from ..charts.registry import registry
 from ..manifests.core import ManifestBuilder, save_manifest
-from ..style.theme import enforce_minimal_theme, tile_axes
+from ..style.theme import enforce_minimal_theme, row_separator, tile_axes
 from ..transforms.core import apply_transforms, infer_missing_columns, suggest_mappings
 
 
@@ -40,19 +40,33 @@ def _serialize_diagnostics(entries: Iterable[Any]) -> List[Dict[str, Any]]:
     return out
 
 
+HIGH_RES_PNG_DPI = 600
+
+
 def _save_figure(fig: plt.Figure, target: Path, dpi: int) -> None:
+    """Serialize ``fig`` to ``target``.
+
+    PDF (and SVG) are written as true vector output with embedded Type 42
+    fonts. Raster formats (PNG/TIFF/JPEG) are rasterized at
+    ``max(dpi, HIGH_RES_PNG_DPI)`` so every render pass ships a publication-
+    ready bitmap alongside the vector artifact.
+    """
+
     suffix = target.suffix.lower().lstrip(".")
     if suffix in {"pdf", "svg"}:
-        fig.savefig(target, bbox_inches="tight")
+        fig.savefig(target, bbox_inches="tight", metadata={"Creator": "panelforge"})
         return
 
-    save_kwargs = {"bbox_inches": "tight", "dpi": dpi}
+    raster_dpi = max(int(dpi), HIGH_RES_PNG_DPI)
+    save_kwargs = {"bbox_inches": "tight", "dpi": raster_dpi}
     if suffix in {"tiff", "jpg", "jpeg", "png"}:
         format_name = "jpeg" if suffix == "jpg" else suffix
+        if format_name == "png":
+            save_kwargs["pil_kwargs"] = {"optimize": True}
         fig.savefig(target, format=format_name, **save_kwargs)
         return
 
-    fig.savefig(target, format="png", **save_kwargs)
+    fig.savefig(target, format="png", pil_kwargs={"optimize": True}, **save_kwargs)
 
 
 def _safe_filename(value: str) -> str:
@@ -88,7 +102,14 @@ def _resolve_data_path(raw_path: str, spec_dir: Path) -> str:
 
 
 def _normalise_formats(formats: Iterable[str]) -> List[str]:
-    requested = []
+    """Normalise a format list while guaranteeing both PDF and PNG are emitted.
+
+    Every render pass must ship a vector PDF *and* a high-resolution PNG, so
+    those two formats are always present regardless of what the caller requests.
+    Additional formats (``svg``/``tiff``/``jpg``) are appended verbatim.
+    """
+
+    requested: List[str] = []
     for value in formats:
         token = str(value).lower()
         if token in {"pdf", "png", "svg", "tiff", "jpg"} and token not in requested:
@@ -97,6 +118,22 @@ def _normalise_formats(formats: Iterable[str]) -> List[str]:
         if token not in requested:
             requested.insert(0, token)
     return requested
+
+
+#: Mandated (rows, cols) grids for each panel count.
+#: 4→2×2, 5→3×2, 6→3×3, 7→4×3, 9→3×3. Counts not listed fall back to the
+#: square-ish ceiling layout below.
+MANDATED_GRID: Dict[int, Tuple[int, int]] = {
+    1: (1, 1),
+    2: (2, 1),
+    3: (3, 1),
+    4: (2, 2),
+    5: (3, 2),
+    6: (3, 3),
+    7: (4, 3),
+    8: (4, 3),
+    9: (3, 3),
+}
 
 
 def _layout_from_spec(count: int, preset: Optional[str], rows: Optional[int], cols: Optional[int]) -> Tuple[int, int]:
@@ -111,14 +148,10 @@ def _layout_from_spec(count: int, preset: Optional[str], rows: Optional[int], co
         if p == "C":
             return 2, 2
         if p == "D":
-            return 2, 3
-    if count <= 1:
-        return 1, 1
-    if count == 2:
-        return 1, 2
-    if count == 3:
-        return 1, 3
-    col_count = min(4, count)
+            return 3, 3
+    if count in MANDATED_GRID:
+        return MANDATED_GRID[count]
+    col_count = min(4, max(1, count))
     row_count = math.ceil(count / col_count)
     return row_count, col_count
 
@@ -303,18 +336,7 @@ def _render_single_panel(panel, render_conf, palette_info: Dict[str, Any], spec_
     )
     fig, ax = renderer(ctx, chart_type, panel=panel)
     enforce_minimal_theme(ax)
-    tile_axes(ax, panel.tile.label, panel.tile.title, panel.tile.subtitle, panel.tile.status)
-    if panel.tile.outcome and str(panel.tile.outcome).lower() not in {"", "none", "na"}:
-        ax.text(
-            0.98,
-            0.02,
-            str(panel.tile.outcome).upper(),
-            transform=ax.transAxes,
-            fontsize=7,
-            ha="right",
-            va="bottom",
-            bbox={"boxstyle": "round,pad=0.1", "facecolor": "#ecfdf3", "edgecolor": "#16a34a"},
-        )
+    tile_axes(ax, panel.tile.label, panel.tile.title)
     fig.tight_layout()
     status = "warn" if diagnostics else "ok"
     return {
@@ -361,6 +383,7 @@ def render_panel(panel, output_dir: Path, render_conf, palette_info: Dict[str, A
 
 def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: Path, formats: Optional[Iterable[str]] = None) -> Dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    enforce_minimal_theme()
     resolved_formats = _normalise_formats(formats or spec.render.formats)
     render_rows, render_cols = _layout_from_spec(len(panels), spec.layout.preset, spec.layout.rows, spec.layout.cols)
     fig, axes = plt.subplots(render_rows, render_cols, figsize=(spec.render.width * render_cols, spec.render.height * render_rows))
@@ -368,11 +391,11 @@ def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: 
     figure_title = str(spec.title or "").strip()
     figure_subtitle = str(spec.subtitle or "").strip()
     if figure_title and figure_subtitle:
-        fig.suptitle(f"{figure_title}\n{figure_subtitle}", fontsize=12, fontweight="bold")
+        fig.suptitle(f"{figure_title}\n{figure_subtitle}", fontsize=12, fontweight="bold", color="#111827")
     elif figure_title:
-        fig.suptitle(figure_title, fontsize=12, fontweight="bold")
+        fig.suptitle(figure_title, fontsize=12, fontweight="bold", color="#111827")
     else:
-        fig.suptitle("Figure", fontsize=12, fontweight="bold")
+        fig.suptitle("Figure", fontsize=12, fontweight="bold", color="#111827")
 
     for axis in axes:
         axis.set_axis_off()
@@ -384,11 +407,15 @@ def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: 
             continue
         axis = axes[idx]
         axis.set_axis_off()
-        axis.set_title(panel.get("label", ""))
         axis.imshow(mpimg.imread(png))
 
-    plt.tight_layout()
-    enforce_minimal_theme()
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
+
+    if render_rows > 1:
+        for row in range(1, render_rows):
+            y = 1.0 - row / render_rows
+            y_adj = y * 0.96
+            row_separator(fig, y_adj)
 
     out_files: Dict[str, str] = {}
     for fmt in resolved_formats:

@@ -77,14 +77,28 @@ outputs/
 - Manifest generation with checksums, output contracts, timestamps, and spec signatures.
 - Legacy adapters for older 4-panel and supplementary workflows.
 
+## Composition grid
+
+Panel counts map to a fixed `(rows × cols)` grid when neither explicit `rows`/`cols` nor a preset is supplied:
+
+| Panels | Grid | Cells | Empty |
+|-------:|:----:|:-----:|:-----:|
+| 4      | 2×2  | 4     | 0     |
+| 5      | 3×2  | 6     | 1     |
+| 6      | 3×3  | 9     | 3     |
+| 7      | 4×3  | 12    | 5     |
+| 9      | 3×3  | 9     | 0     |
+
+Counts 1–3 remain single-column; other counts fall back to the square-ish ceiling layout. Explicit `layout.rows`/`layout.cols` or a preset always override the table above.
+
 ## Output contract
 
 The default output policy is fixed and publication-friendly:
 
-- Every panel emits `*.pdf` and `*.png`
-- Every assembled figure emits `*.pdf` and `*.png`
-- PNG output defaults to high resolution
-- Additional formats such as `svg` can be requested explicitly without replacing `pdf` and `png`
+- Every render pass emits a **vector PDF** *and* a **high-resolution PNG** for every panel and for the assembled figure — on the same pass.
+- PDF (and SVG) are true vector output with embedded Type 42 fonts and a `Creator` metadata tag.
+- PNG/TIFF/JPEG are rasterized at `max(spec_dpi, 600)` so the raster artifact is always publication-ready; PNG is written with `optimize=True`.
+- Additional formats (`svg`, `tiff`, `jpg`) can be requested explicitly without replacing `pdf` and `png`.
 
 ## Commands you will actually use
 
@@ -142,9 +156,12 @@ render:
 
 ## Style contract
 
-- Arial-first rendering is enforced where the environment supports it.
-- Figure and panel subtitles are first-class metadata, not afterthoughts.
-- Panel tiles carry label, title, subtitle, status, and outcome cues.
+- Helvetica-first rendering (Helvetica → Helvetica Neue → Arial → Liberation Sans → sans) with embedded Type 42 fonts in PDF/PS and untouched SVG text for downstream editability.
+- Large bold panel labels (`A`, `B`, `C`…) anchored outside each axes top-left.
+- Panel titles are hard-capped at three words on a single line; longer titles are truncated via `panelforge.style.short_title`.
+- No footers. No figure caption, no panel-level meta line, no outcome pill — nothing is rendered below the data. Metadata lives in the manifest, not on the canvas.
+- Grid-free axes, thin grey spines on left and bottom only.
+- `panelforge.style` exports the reusable primitives: `panel_label`, `tile_axes`, `annotation_note`, `row_separator`, `short_title`.
 - The visual baseline stays minimal and restrained so panels can mix across analysis domains without looking incoherent.
 
 ## Python and R parity
@@ -154,7 +171,7 @@ Python and R both render from the same YAML structure.
 - Python path: `panelforge render ...`
 - R path: `Rscript R/panel_renderer.R examples/specs/single_panel.yaml outputs/r-run`
 
-The R renderer prefers Arial when available and degrades safely to `sans` when it is not installed.
+The R renderer walks the same sans-serif stack (Helvetica → Helvetica Neue → Arial → Liberation Sans) and degrades safely to `sans` when none is installed.
 
 ## Contributing
 
@@ -162,4 +179,4 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md). If you add a chart family, adapte
 
 ## Current release
 
-The repository is published and currently aligned to `v0.1.3`.
+The repository is published and currently aligned to `v0.1.4`.

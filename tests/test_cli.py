@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from panelforge.discovery.scanner import phase_discovery
 

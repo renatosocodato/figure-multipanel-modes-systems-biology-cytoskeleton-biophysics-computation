@@ -33,11 +33,29 @@ is_font_available <- function(family) {
   }, error = function(...) FALSE)
 }
 
-plot_font_family <- if (is_font_available("Arial")) {
-  "Arial"
-} else {
-  message("R renderer: Arial unavailable, using sans as fallback font.")
+plot_font_family <- local({
+  preferred <- c("Helvetica", "Helvetica Neue", "Arial", "Liberation Sans")
+  for (family in preferred) {
+    if (is_font_available(family)) {
+      return(family)
+    }
+  }
+  message("R renderer: Helvetica/Arial unavailable, using sans as fallback font.")
   "sans"
+})
+
+MAX_TITLE_WORDS <- 3L
+
+short_title <- function(value, max_words = MAX_TITLE_WORDS) {
+  if (is.null(value) || is.na(value)) {
+    return("")
+  }
+  pieces <- strsplit(gsub("[\r\n]+", " ", as.character(value)), "\\s+", perl = TRUE)[[1L]]
+  pieces <- pieces[nzchar(pieces)]
+  if (length(pieces) == 0L) {
+    return("")
+  }
+  paste(head(pieces, max_words), collapse = " ")
 }
 
 draw_grid_text <- function(label, x, y, gp, fallback_family = "sans") {
@@ -52,6 +70,21 @@ draw_grid_text <- function(label, x, y, gp, fallback_family = "sans") {
     }
   )
 }
+
+## Mandated (rows, cols) grids per panel count.
+## 4->2x2, 5->3x2, 6->3x3, 7->4x3, 9->3x3. Counts not listed fall back to
+## the square-ish ceiling layout below.
+MANDATED_GRID <- list(
+  "1" = c(1L, 1L),
+  "2" = c(2L, 1L),
+  "3" = c(3L, 1L),
+  "4" = c(2L, 2L),
+  "5" = c(3L, 2L),
+  "6" = c(3L, 3L),
+  "7" = c(4L, 3L),
+  "8" = c(4L, 3L),
+  "9" = c(3L, 3L)
+)
 
 layout_from_spec <- function(panel_count, preset, rows, cols) {
   if (!is.null(rows) && !is.null(cols)) {
@@ -70,19 +103,15 @@ layout_from_spec <- function(panel_count, preset, rows, cols) {
       return(list(rows = 2L, cols = 2L))
     }
     if (preset == "D") {
-      return(list(rows = 2L, cols = 3L))
+      return(list(rows = 3L, cols = 3L))
     }
   }
 
   panel_count <- max(as.integer(panel_count), 1L)
-  if (panel_count == 1L) {
-    return(list(rows = 1L, cols = 1L))
-  }
-  if (panel_count == 2L) {
-    return(list(rows = 1L, cols = 2L))
-  }
-  if (panel_count == 3L) {
-    return(list(rows = 1L, cols = 3L))
+  key <- as.character(panel_count)
+  if (!is.null(MANDATED_GRID[[key]])) {
+    dims <- MANDATED_GRID[[key]]
+    return(list(rows = dims[[1L]], cols = dims[[2L]]))
   }
   panel_cols <- min(4L, panel_count)
   panel_rows <- as.integer(ceiling(panel_count / panel_cols))
@@ -167,15 +196,17 @@ resolve_data_path <- function(path, spec_dir) {
 }
 
 minimal_theme <- function() {
-  theme_minimal(base_family = plot_font_family, base_size = 10) +
+  theme_minimal(base_family = plot_font_family, base_size = 9) +
     theme(
-      plot.title = element_text(face = "bold", size = 12, colour = "#111827"),
-      plot.subtitle = element_text(size = 9.5, colour = "#374151"),
-      axis.title = element_text(size = 9.5),
-      panel.grid.major = element_line(color = "#E5E7EB", linewidth = 0.25),
-      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 10, colour = "#111827", hjust = 0.5, margin = margin(b = 6)),
+      plot.subtitle = element_text(size = 8, colour = "#6B7280", hjust = 0.5),
+      axis.title = element_text(size = 9, colour = "#111827"),
+      axis.text = element_text(size = 8, colour = "#4B5563"),
+      axis.line = element_line(color = "#4B5563", linewidth = 0.4),
+      axis.ticks = element_line(color = "#4B5563", linewidth = 0.4),
+      panel.grid = element_blank(),
       panel.border = element_blank(),
-      axis.ticks = element_line(color = "#9CA3AF", linewidth = 0.3),
+      plot.margin = margin(t = 18, r = 10, b = 8, l = 22),
       legend.position = "none"
     )
 }
@@ -201,11 +232,17 @@ infer_mappings <- function(chart, data) {
 
 add_tile <- function(p, panel_label, title, subtitle, status) {
   label <- coalesce(panel_label, "panel")
-  subtitle_text <- paste0("[", label, "] ", coalesce(title, "Panel"), ifelse(is.null(subtitle) || is.na(subtitle) || subtitle == "", "", paste0(" — ", subtitle)))
-  if (!is.null(status) && !is.na(status) && nzchar(status)) {
-    subtitle_text <- paste0(subtitle_text, " | ", status)
-  }
-  p + annotate("text", x = -Inf, y = Inf, hjust = -0.02, vjust = 1.35, size = 3.1, fontface = "bold", label = subtitle_text, color = "#111827")
+  p + annotation_custom(
+    grob = grid::textGrob(
+      label = label,
+      x = grid::unit(0, "npc"),
+      y = grid::unit(1, "npc"),
+      hjust = 0,
+      vjust = 0,
+      gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 14, col = "#111827")
+    ),
+    xmin = -Inf, xmax = -Inf, ymin = Inf, ymax = Inf
+  )
 }
 
 safe_numeric <- function(values) {
@@ -442,7 +479,7 @@ render_chart <- function(chart, data, title, subtitle, tile_label, status) {
     }
   )
 
-  p <- p + labs(title = title, subtitle = subtitle) + minimal_theme()
+  p <- p + labs(title = short_title(title), subtitle = NULL) + minimal_theme()
   add_tile(p, tile_label, title, subtitle, status)
 }
 
@@ -533,16 +570,16 @@ render_assembled_figure <- function(plots, figure_title, figure_subtitle, out_di
         draw_grid_text(
           label = plot_title,
           x = 0.5,
-          y = 0.75,
-          gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 20)
+          y = 0.78,
+          gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 18, col = "#111827")
         )
       }
       if (!is.null(figure_subtitle) && !is.na(figure_subtitle) && nzchar(figure_subtitle)) {
         draw_grid_text(
           label = figure_subtitle,
           x = 0.5,
-          y = 0.25,
-          gp = grid::gpar(fontfamily = plot_font_family, fontface = "plain", fontsize = 16)
+          y = 0.32,
+          gp = grid::gpar(fontfamily = plot_font_family, fontface = "plain", fontsize = 11, col = "#6B7280")
         )
       }
 

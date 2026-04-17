@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 
 SCHEMA_VERSION = "1.0.0"
