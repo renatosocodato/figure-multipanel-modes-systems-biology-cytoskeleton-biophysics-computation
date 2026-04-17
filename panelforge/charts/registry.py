@@ -32,16 +32,18 @@ class ChartRegistry:
             "violin",
             "dot",
             "dot_plot",
+            "split_violin",
+            "ridge_distribution",
         ]:
             self._by_name[name] = lambda ctx, _n, panel=None, _f=univariate.render: _f(ctx, _n, panel=panel)
 
-        for name in ["scatter", "line", "area", "stacked_area", "regression", "regression_ci", "hexbin", "correlogram"]:
+        for name in ["scatter", "line", "area", "stacked_area", "regression", "regression_ci", "hexbin", "correlogram", "phase_portrait", "hierarchical_ci_line"]:
             self._by_name[name] = lambda ctx, _n, panel=None, _f=bivariate.render: _f(ctx, _n, panel=panel)
 
         for name in ["heatmap", "cluster_heatmap", "corr_matrix", "pca", "pca_scatter", "tsne", "tsne_scatter", "umap", "umap_scatter"]:
             self._by_name[name] = lambda ctx, _n, panel=None, _f=multivariate.render: _f(ctx, _n, panel=panel)
 
-        for name in ["stacked_bar", "stacked_bar_100", "outcome_composition", "tally_tiles"]:
+        for name in ["stacked_bar", "stacked_bar_100", "outcome_composition", "tally_tiles", "sobol_bar"]:
             self._by_name[name] = lambda ctx, _n, panel=None, _f=compositional.render: _f(ctx, _n, panel=panel)
 
         for name in ["roc", "pr", "precision_recall", "calibration", "residuals", "qq", "ma", "volcano", "manhattan"]:

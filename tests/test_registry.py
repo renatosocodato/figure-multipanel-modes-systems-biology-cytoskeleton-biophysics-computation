@@ -25,6 +25,11 @@ def test_required_chart_types_resolve() -> None:
         "roc",
         "qq",
         "ma",
+        "phase_portrait",
+        "split_violin",
+        "ridge_distribution",
+        "hierarchical_ci_line",
+        "sobol_bar",
     ]
     for chart_type in required_types:
         assert registry.resolve(chart_type) is not None
