@@ -132,11 +132,18 @@ def render_phase_portrait(ctx: RenderContext, panel=None):
 
     Reads `options.rhs` as a key into `panelforge.dynamics.RHS_REGISTRY` and
     `options.potential` (optional) as a key into `POTENTIAL_REGISTRY` for the
-    contour backdrop. Fixed points come from the `data` frame (columns x, y,
-    stability) or from the category mapping. Labels are halo'd for legibility.
+    contour backdrop. Fixed points come from the `data` frame. Coordinate
+    columns are resolved through `mappings.x` / `mappings.y` (defaulting to
+    "x" / "y"); the per-state label column is `mappings.category` (falling
+    back to "state" or "category"); optional `stability` column drives the
+    stable/unstable marker style. Labels are halo'd for legibility.
     """
     from ..dynamics import RHS_REGISTRY, POTENTIAL_REGISTRY
 
+    mappings = ctx.chart_spec.get("mappings", {})
+    x_col = mappings.get("x") or "x"
+    y_col = mappings.get("y") or "y"
+    cat_col = mappings.get("category")
     opts = ctx.chart_spec.get("options", {})
     xlim = opts.get("xlim", [0.0, 3.0])
     ylim = opts.get("ylim", [0.0, 3.0])
@@ -187,21 +194,31 @@ def render_phase_portrait(ctx: RenderContext, panel=None):
     # Fixed points from the data mapping
     halo = [pe.withStroke(linewidth=2.8, foreground="white")]
     fp_palette = opts.get("fp_palette", {"home": "#2E7D32", "gate": "#F9A825", "trap": "#C62828"})
-    for _, row in ctx.data.iterrows():
-        name_raw = str(row.get("state", row.get("category", ""))).strip()
-        name_key = name_raw.lower().split("_")[0]
-        col = fp_palette.get(name_key, "#111111")
-        stability = str(row.get("stability", "stable")).lower()
-        if stability == "stable":
-            ax.plot(row["x"], row["y"], "o", mfc=col, mec="black",
-                    mew=0.9, ms=9, zorder=6)
-            ax.annotate(name_raw.upper(), (row["x"], row["y"]),
-                        xytext=(10, 8), textcoords="offset points",
-                        fontsize=9, fontweight="bold", color=col,
-                        path_effects=halo, zorder=7)
-        else:
-            ax.plot(row["x"], row["y"], "x", color="#111", ms=8, mew=1.7,
-                    zorder=6, path_effects=halo)
+    have_xy = x_col in ctx.data.columns and y_col in ctx.data.columns
+    label_sources = [cat_col] if cat_col else []
+    label_sources.extend(["state", "category"])
+    if have_xy:
+        for _, row in ctx.data.iterrows():
+            name_raw = ""
+            for src in label_sources:
+                if src and src in row and pd.notna(row[src]):
+                    name_raw = str(row[src]).strip()
+                    break
+            name_key = name_raw.lower().split("_")[0]
+            col = fp_palette.get(name_key, "#111111")
+            stability = str(row.get("stability", "stable")).lower()
+            xv, yv = row[x_col], row[y_col]
+            if stability == "stable":
+                ax.plot(xv, yv, "o", mfc=col, mec="black",
+                        mew=0.9, ms=9, zorder=6)
+                if name_raw:
+                    ax.annotate(name_raw.upper(), (xv, yv),
+                                xytext=(10, 8), textcoords="offset points",
+                                fontsize=9, fontweight="bold", color=col,
+                                path_effects=halo, zorder=7)
+            else:
+                ax.plot(xv, yv, "x", color="#111", ms=8, mew=1.7,
+                        zorder=6, path_effects=halo)
 
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
@@ -234,7 +251,15 @@ def render_hierarchical_ci_line(ctx: RenderContext, panel=None):
         clusters = sub.groupby([cluster_col, mappings["x"]])[mappings["y"]].mean().unstack(cluster_col)
         t = clusters.index.to_numpy()
         mean = clusters.mean(axis=1).to_numpy()
-        sem = clusters.std(axis=1, ddof=1).to_numpy() / np.sqrt(max(clusters.shape[1], 1))
+        # SEM per x-bin uses the observed cluster count at that bin, not the
+        # total cluster column count — clusters can be missing at some x
+        # values (partial coverage), in which case dividing by the full width
+        # underestimates uncertainty. NaN counts (<2) yield NaN SEM so the
+        # band drops out rather than collapsing to zero.
+        counts = clusters.count(axis=1).to_numpy()
+        std = clusters.std(axis=1, ddof=1).to_numpy()
+        with np.errstate(divide="ignore", invalid="ignore"):
+            sem = np.where(counts >= 2, std / np.sqrt(counts), np.nan)
         lo = mean - 1.96 * sem
         hi = mean + 1.96 * sem
         color = palette[i % len(palette)]

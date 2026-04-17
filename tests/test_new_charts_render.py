@@ -99,3 +99,83 @@ def test_rhoa_phase_portrait_renders(tmp_path) -> None:
     assembled = output["assembled"]["files"]
     assert Path(assembled["pdf"]).exists()
     assert Path(assembled["png"]).exists()
+
+
+def test_phase_portrait_honours_custom_xy_mappings() -> None:
+    """phase_portrait must read coordinates through mappings.x/mappings.y, not hardcoded 'x'/'y'."""
+    import pandas as pd
+
+    from panelforge.charts.base import RenderContext
+    from panelforge.charts.bivariate import render_phase_portrait
+
+    data = pd.DataFrame(
+        {
+            "state": ["home", "gate", "trap"],
+            "rhoa": [0.15, 0.95, 2.25],
+            "p190": [0.15, 0.95, 2.25],
+            "stability": ["stable", "stable", "stable"],
+        }
+    )
+    ctx = RenderContext(
+        data=data,
+        chart_spec={
+            "mappings": {"x": "rhoa", "y": "p190", "category": "state"},
+            "options": {
+                "xlim": [0.0, 3.0],
+                "ylim": [0.0, 3.0],
+                "grid": 6,
+                "rhs": "rhoa_tristable_v1",
+                "cond": "basal",
+                "nullclines": False,
+            },
+        },
+        palette=["#111111"],
+        width=3.0,
+        height=2.4,
+    )
+    fig, ax = render_phase_portrait(ctx, panel=None)
+    assert fig is not None and ax is not None
+
+
+def test_hierarchical_ci_sem_uses_per_bin_cluster_count() -> None:
+    """SEM denominator must be the observed cluster count at each x-bin, not total columns."""
+    import numpy as np
+    import pandas as pd
+
+    from panelforge.charts.base import RenderContext
+    from panelforge.charts.bivariate import render_hierarchical_ci_line
+
+    # 3 clusters total, but only cluster A exists at t=0 (should yield NaN SEM),
+    # and all three exist at t=1 (SEM divides by sqrt(3), not a larger denom).
+    rows = [
+        {"animal_id": "A", "t": 0, "y": 1.0, "grp": "g1"},
+        {"animal_id": "A", "t": 1, "y": 2.0, "grp": "g1"},
+        {"animal_id": "B", "t": 1, "y": 3.0, "grp": "g1"},
+        {"animal_id": "C", "t": 1, "y": 4.0, "grp": "g1"},
+    ]
+    data = pd.DataFrame(rows)
+    ctx = RenderContext(
+        data=data,
+        chart_spec={
+            "mappings": {"x": "t", "y": "y", "group": "grp"},
+            "options": {"cluster": "animal_id"},
+        },
+        palette=["#0072B2"],
+        width=3.0,
+        height=2.4,
+    )
+    fig, ax = render_hierarchical_ci_line(ctx, panel=None)
+
+    fills = [c for c in ax.collections if hasattr(c, "get_paths")]
+    assert fills, "expected a fill_between CI band"
+    verts = np.concatenate([p.vertices for p in fills[0].get_paths()])
+    ys = verts[:, 1]
+    # At t=0 the band collapses (single cluster -> NaN SEM -> no finite band).
+    # At t=1 the band is finite; width must equal 1.96 * std/sqrt(3) * 2.
+    std_t1 = float(np.std([2.0, 3.0, 4.0], ddof=1))
+    expected_half_width = 1.96 * std_t1 / np.sqrt(3)
+    finite = ys[np.isfinite(ys)]
+    observed_half_width = (finite.max() - finite.min()) / 2.0
+    assert np.isclose(observed_half_width, expected_half_width, rtol=1e-3), (
+        f"expected half-width {expected_half_width:.4f} for 3 clusters, got {observed_half_width:.4f}"
+    )
