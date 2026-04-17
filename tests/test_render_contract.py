@@ -1,7 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from panelforge.render import render_spec
+from panelforge.render.engine import _layout_from_spec
 
 
 def test_render_contract_pdf_and_png_exist(tmp_path) -> None:
@@ -35,6 +38,20 @@ def test_render_generates_manifest_with_checksum_payload(tmp_path) -> None:
     assert len(payload["figures"]) == 1
     assert all("checksum" in item for item in payload["panels"])
     assert all(Path(item["file"]).exists() for item in payload["panels"])
+
+
+@pytest.mark.parametrize(
+    "count,expected",
+    [
+        (4, (2, 2)),
+        (5, (3, 2)),
+        (6, (3, 3)),
+        (7, (4, 3)),
+        (9, (3, 3)),
+    ],
+)
+def test_layout_from_spec_honours_mandated_grids(count: int, expected: tuple[int, int]) -> None:
+    assert _layout_from_spec(count, preset=None, rows=None, cols=None) == expected
 
 
 def test_render_emits_vector_pdf_and_highres_png_per_pass(tmp_path) -> None:

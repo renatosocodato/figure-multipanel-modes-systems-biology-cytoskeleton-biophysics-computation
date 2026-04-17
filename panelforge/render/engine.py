@@ -120,6 +120,22 @@ def _normalise_formats(formats: Iterable[str]) -> List[str]:
     return requested
 
 
+#: Mandated (rows, cols) grids for each panel count.
+#: 4→2×2, 5→3×2, 6→3×3, 7→4×3, 9→3×3. Counts not listed fall back to the
+#: square-ish ceiling layout below.
+MANDATED_GRID: Dict[int, Tuple[int, int]] = {
+    1: (1, 1),
+    2: (2, 1),
+    3: (3, 1),
+    4: (2, 2),
+    5: (3, 2),
+    6: (3, 3),
+    7: (4, 3),
+    8: (4, 3),
+    9: (3, 3),
+}
+
+
 def _layout_from_spec(count: int, preset: Optional[str], rows: Optional[int], cols: Optional[int]) -> Tuple[int, int]:
     if rows and cols:
         return max(1, int(rows)), max(1, int(cols))
@@ -132,14 +148,10 @@ def _layout_from_spec(count: int, preset: Optional[str], rows: Optional[int], co
         if p == "C":
             return 2, 2
         if p == "D":
-            return 2, 3
-    if count <= 1:
-        return 1, 1
-    if count == 2:
-        return 1, 2
-    if count == 3:
-        return 1, 3
-    col_count = min(4, count)
+            return 3, 3
+    if count in MANDATED_GRID:
+        return MANDATED_GRID[count]
+    col_count = min(4, max(1, count))
     row_count = math.ceil(count / col_count)
     return row_count, col_count
 

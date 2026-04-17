@@ -71,6 +71,21 @@ draw_grid_text <- function(label, x, y, gp, fallback_family = "sans") {
   )
 }
 
+## Mandated (rows, cols) grids per panel count.
+## 4->2x2, 5->3x2, 6->3x3, 7->4x3, 9->3x3. Counts not listed fall back to
+## the square-ish ceiling layout below.
+MANDATED_GRID <- list(
+  "1" = c(1L, 1L),
+  "2" = c(2L, 1L),
+  "3" = c(3L, 1L),
+  "4" = c(2L, 2L),
+  "5" = c(3L, 2L),
+  "6" = c(3L, 3L),
+  "7" = c(4L, 3L),
+  "8" = c(4L, 3L),
+  "9" = c(3L, 3L)
+)
+
 layout_from_spec <- function(panel_count, preset, rows, cols) {
   if (!is.null(rows) && !is.null(cols)) {
     return(list(rows = as.integer(rows), cols = as.integer(cols)))
@@ -88,19 +103,15 @@ layout_from_spec <- function(panel_count, preset, rows, cols) {
       return(list(rows = 2L, cols = 2L))
     }
     if (preset == "D") {
-      return(list(rows = 2L, cols = 3L))
+      return(list(rows = 3L, cols = 3L))
     }
   }
 
   panel_count <- max(as.integer(panel_count), 1L)
-  if (panel_count == 1L) {
-    return(list(rows = 1L, cols = 1L))
-  }
-  if (panel_count == 2L) {
-    return(list(rows = 1L, cols = 2L))
-  }
-  if (panel_count == 3L) {
-    return(list(rows = 1L, cols = 3L))
+  key <- as.character(panel_count)
+  if (!is.null(MANDATED_GRID[[key]])) {
+    dims <- MANDATED_GRID[[key]]
+    return(list(rows = dims[[1L]], cols = dims[[2L]]))
   }
   panel_cols <- min(4L, panel_count)
   panel_rows <- as.integer(ceiling(panel_count / panel_cols))

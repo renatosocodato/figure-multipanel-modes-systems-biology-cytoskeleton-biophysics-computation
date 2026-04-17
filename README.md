@@ -77,6 +77,20 @@ outputs/
 - Manifest generation with checksums, output contracts, timestamps, and spec signatures.
 - Legacy adapters for older 4-panel and supplementary workflows.
 
+## Composition grid
+
+Panel counts map to a fixed `(rows × cols)` grid when neither explicit `rows`/`cols` nor a preset is supplied:
+
+| Panels | Grid | Cells | Empty |
+|-------:|:----:|:-----:|:-----:|
+| 4      | 2×2  | 4     | 0     |
+| 5      | 3×2  | 6     | 1     |
+| 6      | 3×3  | 9     | 3     |
+| 7      | 4×3  | 12    | 5     |
+| 9      | 3×3  | 9     | 0     |
+
+Counts 1–3 remain single-column; other counts fall back to the square-ish ceiling layout. Explicit `layout.rows`/`layout.cols` or a preset always override the table above.
+
 ## Output contract
 
 The default output policy is fixed and publication-friendly:
