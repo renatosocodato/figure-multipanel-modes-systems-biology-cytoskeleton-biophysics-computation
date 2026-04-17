@@ -44,6 +44,20 @@ plot_font_family <- local({
   "sans"
 })
 
+MAX_TITLE_WORDS <- 3L
+
+short_title <- function(value, max_words = MAX_TITLE_WORDS) {
+  if (is.null(value) || is.na(value)) {
+    return("")
+  }
+  pieces <- strsplit(gsub("[\r\n]+", " ", as.character(value)), "\\s+", perl = TRUE)[[1L]]
+  pieces <- pieces[nzchar(pieces)]
+  if (length(pieces) == 0L) {
+    return("")
+  }
+  paste(head(pieces, max_words), collapse = " ")
+}
+
 draw_grid_text <- function(label, x, y, gp, fallback_family = "sans") {
   tryCatch(
     grid::grid.text(label = label, x = x, y = y, gp = gp),
@@ -207,10 +221,7 @@ infer_mappings <- function(chart, data) {
 
 add_tile <- function(p, panel_label, title, subtitle, status) {
   label <- coalesce(panel_label, "panel")
-  meta_bits <- c()
-  if (!is.null(subtitle) && !is.na(subtitle) && nzchar(subtitle)) meta_bits <- c(meta_bits, subtitle)
-  if (!is.null(status) && !is.na(status) && nzchar(status)) meta_bits <- c(meta_bits, status)
-  p <- p + annotation_custom(
+  p + annotation_custom(
     grob = grid::textGrob(
       label = label,
       x = grid::unit(0, "npc"),
@@ -221,17 +232,6 @@ add_tile <- function(p, panel_label, title, subtitle, status) {
     ),
     xmin = -Inf, xmax = -Inf, ymin = Inf, ymax = Inf
   )
-  if (length(meta_bits) > 0L) {
-    p <- p + annotate(
-      "text",
-      x = Inf, y = Inf,
-      hjust = 1.02, vjust = -0.4,
-      size = 2.6, color = "#6B7280",
-      family = plot_font_family,
-      label = paste(meta_bits, collapse = " \u00B7 ")
-    )
-  }
-  p
 }
 
 safe_numeric <- function(values) {
@@ -468,7 +468,7 @@ render_chart <- function(chart, data, title, subtitle, tile_label, status) {
     }
   )
 
-  p <- p + labs(title = title, subtitle = subtitle) + minimal_theme()
+  p <- p + labs(title = short_title(title), subtitle = NULL) + minimal_theme()
   add_tile(p, tile_label, title, subtitle, status)
 }
 

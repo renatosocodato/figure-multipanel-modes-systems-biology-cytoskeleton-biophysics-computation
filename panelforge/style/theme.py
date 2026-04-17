@@ -48,8 +48,17 @@ NOTE_STYLES = {
 }
 
 SEPARATOR_COLOR = "#D1D5DB"
-FOOTER_COLOR = "#6B7280"
 PANEL_LABEL_COLOR = "#111827"
+MAX_TITLE_WORDS = 3
+
+
+def short_title(value: Optional[str], max_words: int = MAX_TITLE_WORDS) -> str:
+    """Collapse whitespace, strip line breaks, and cap at ``max_words`` tokens."""
+
+    if value is None:
+        return ""
+    words = str(value).replace("\n", " ").replace("\r", " ").split()
+    return " ".join(words[:max_words])
 
 
 def enforce_minimal_theme(ax=None) -> None:
@@ -91,27 +100,24 @@ def tile_axes(
     ax,
     panel_label_letter: str,
     title: str,
-    subtitle: str = "",
-    status: Optional[str] = None,
+    subtitle: str = "",  # kept for API compatibility; not rendered (no footer / meta line).
+    status: Optional[str] = None,  # kept for API compatibility; not rendered.
 ) -> None:
-    """Render panel label, centered title, and optional status above the axes."""
+    """Render the panel label and a centered single-line title of at most three words."""
 
     if ax is None:
         return
     panel_label(ax, panel_label_letter)
-    if title:
-        ax.set_title(str(title), loc="center", fontsize=10, fontweight="bold", color=PANEL_LABEL_COLOR, pad=8)
-    meta = [bit for bit in (subtitle, status) if bit]
-    if meta:
-        ax.text(
-            1.0,
-            1.01,
-            " · ".join(str(bit) for bit in meta),
-            transform=ax.transAxes,
-            fontsize=7.5,
-            color="#6B7280",
-            va="bottom",
-            ha="right",
+    trimmed = short_title(title)
+    if trimmed:
+        ax.set_title(
+            trimmed,
+            loc="center",
+            fontsize=10,
+            fontweight="bold",
+            color=PANEL_LABEL_COLOR,
+            pad=8,
+            wrap=False,
         )
 
 
@@ -163,21 +169,4 @@ def row_separator(fig, y: float, *, left: float = 0.04, right: float = 0.96, lin
             linewidth=linewidth,
             solid_capstyle="butt",
         )
-    )
-
-
-def footer_caption(fig, text: str, *, y: float = 0.01, fontsize: int = 7.5) -> None:
-    """Place a small grey caption centred along the figure footer."""
-
-    if fig is None or not text:
-        return
-    fig.text(
-        0.5,
-        y,
-        text,
-        ha="center",
-        va="bottom",
-        fontsize=fontsize,
-        color=FOOTER_COLOR,
-        style="italic",
     )

@@ -17,7 +17,7 @@ from ..schema import FigureSpec, PaletteSpec
 from ..charts.base import RenderContext
 from ..charts.registry import registry
 from ..manifests.core import ManifestBuilder, save_manifest
-from ..style.theme import enforce_minimal_theme, footer_caption, row_separator, tile_axes
+from ..style.theme import enforce_minimal_theme, row_separator, tile_axes
 from ..transforms.core import apply_transforms, infer_missing_columns, suggest_mappings
 
 
@@ -303,31 +303,7 @@ def _render_single_panel(panel, render_conf, palette_info: Dict[str, Any], spec_
     )
     fig, ax = renderer(ctx, chart_type, panel=panel)
     enforce_minimal_theme(ax)
-    tile_axes(ax, panel.tile.label, panel.tile.title, panel.tile.subtitle, panel.tile.status)
-    outcome = str(panel.tile.outcome or "").lower()
-    if outcome and outcome not in {"none", "na"}:
-        outcome_palette = {
-            "pass": {"face": "#F0FDF4", "edge": "#16A34A", "text": "#166534"},
-            "warn": {"face": "#FEF3C7", "edge": "#D97706", "text": "#92400E"},
-            "fail": {"face": "#FEF2F2", "edge": "#DC2626", "text": "#991B1B"},
-        }.get(outcome, {"face": "#F9FAFB", "edge": "#9CA3AF", "text": "#1F2937"})
-        ax.text(
-            0.98,
-            0.02,
-            outcome.upper(),
-            transform=ax.transAxes,
-            fontsize=7,
-            fontweight="bold",
-            color=outcome_palette["text"],
-            ha="right",
-            va="bottom",
-            bbox={
-                "boxstyle": "round,pad=0.2",
-                "facecolor": outcome_palette["face"],
-                "edgecolor": outcome_palette["edge"],
-                "linewidth": 0.6,
-            },
-        )
+    tile_axes(ax, panel.tile.label, panel.tile.title)
     fig.tight_layout()
     status = "warn" if diagnostics else "ok"
     return {
@@ -400,17 +376,13 @@ def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: 
         axis.set_axis_off()
         axis.imshow(mpimg.imread(png))
 
-    fig.tight_layout(rect=(0.0, 0.035, 1.0, 0.96))
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
 
     if render_rows > 1:
         for row in range(1, render_rows):
             y = 1.0 - row / render_rows
-            y_adj = 0.04 + (y * (0.96 - 0.08))
+            y_adj = y * 0.96
             row_separator(fig, y_adj)
-
-    caption_bits = [bit for bit in (figure_subtitle, f"panels: {len(panels)}") if bit]
-    if caption_bits:
-        footer_caption(fig, " · ".join(caption_bits))
 
     out_files: Dict[str, str] = {}
     for fmt in resolved_formats:

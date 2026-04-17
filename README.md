@@ -143,10 +143,11 @@ render:
 ## Style contract
 
 - Helvetica-first rendering (Helvetica → Helvetica Neue → Arial → Liberation Sans → sans) with embedded Type 42 fonts in PDF/PS and untouched SVG text for downstream editability.
-- Large bold panel labels (`A`, `B`, `C`…) anchored outside each axes; titles render centred above the plot; subtitle and status collapse into a quiet grey meta-line.
-- Grid-free axes, thin grey spines on left and bottom only, and outcome pills styled per `pass / warn / fail` semantics.
-- Colored annotation pills (`ok`, `warn`, `info`, `accent`) and figure-level row separators + footer captions available as first-class helpers in `panelforge.style`.
-- Figure and panel subtitles are first-class metadata, not afterthoughts.
+- Large bold panel labels (`A`, `B`, `C`…) anchored outside each axes top-left.
+- Panel titles are hard-capped at three words on a single line; longer titles are truncated via `panelforge.style.short_title`.
+- No footers. No figure caption, no panel-level meta line, no outcome pill — nothing is rendered below the data. Metadata lives in the manifest, not on the canvas.
+- Grid-free axes, thin grey spines on left and bottom only.
+- `panelforge.style` exports the reusable primitives: `panel_label`, `tile_axes`, `annotation_note`, `row_separator`, `short_title`.
 - The visual baseline stays minimal and restrained so panels can mix across analysis domains without looking incoherent.
 
 ## Python and R parity

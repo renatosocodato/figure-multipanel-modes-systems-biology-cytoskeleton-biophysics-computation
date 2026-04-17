@@ -32,10 +32,10 @@ def _safe_series(data: pd.DataFrame, name: Optional[str], required: bool = True)
     return data[name]
 
 
-def create_panel_axes(width: float, height: float, title: str, subtitle: str = ""):
+def create_panel_axes(width: float, height: float, title: str = "", subtitle: str = ""):
+    """Allocate a panel figure + axes. Title/subtitle are ignored; tile_axes owns the title."""
+
+    del title, subtitle
     fig, ax = plt.subplots(figsize=(width, height))
-    fig.suptitle(title)
-    if subtitle:
-        ax.set_title(subtitle)
     return fig, ax
 
