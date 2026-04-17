@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 

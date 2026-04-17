@@ -35,3 +35,21 @@ def test_render_generates_manifest_with_checksum_payload(tmp_path) -> None:
     assert len(payload["figures"]) == 1
     assert all("checksum" in item for item in payload["panels"])
     assert all(Path(item["file"]).exists() for item in payload["panels"])
+
+
+def test_render_emits_vector_pdf_and_highres_png_per_pass(tmp_path) -> None:
+    """Every render pass must ship a vector PDF and a high-res PNG for every artifact."""
+
+    repo_root = Path(__file__).resolve().parents[1]
+    spec = repo_root / "examples" / "specs" / "four_panel.yaml"
+    output = render_spec(spec, output_dir=tmp_path / "dual", write_manifest=False)
+
+    artifacts = [panel["files"] for panel in output["panels"]]
+    artifacts.append(output["assembled"]["files"])
+
+    for files in artifacts:
+        pdf_path = Path(files["pdf"])
+        png_path = Path(files["png"])
+        assert pdf_path.exists() and png_path.exists()
+        assert pdf_path.read_bytes().startswith(b"%PDF-"), f"{pdf_path} is not a vector PDF"
+        assert png_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"), f"{png_path} is not a PNG"

@@ -28,7 +28,7 @@ def build_legacy_supplementary_spec(paper_root: str, phase: int, panel_label: st
                     mappings=MappingSpec(),
                     options={},
                 ),
-                output_name=f"analysis_{phase:02d}_supplementary_{chr(ord("S") + idx)}",
+                output_name=f"analysis_{phase:02d}_supplementary_{chr(ord('S') + idx)}",
             )
         )
 

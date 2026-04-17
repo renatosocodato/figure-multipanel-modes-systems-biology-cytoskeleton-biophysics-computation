@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
 
-import matplotlib.pyplot as plt
-import pandas as pd
 import seaborn as sns
 from sklearn.decomposition import PCA
 
-from .base import _safe_series, create_panel_axes, RenderContext
+from .base import create_panel_axes, RenderContext
 
 
 def render_heatmap(ctx: RenderContext, panel=None):

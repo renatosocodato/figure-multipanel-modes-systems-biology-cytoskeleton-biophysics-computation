@@ -81,10 +81,10 @@ outputs/
 
 The default output policy is fixed and publication-friendly:
 
-- Every panel emits `*.pdf` and `*.png`
-- Every assembled figure emits `*.pdf` and `*.png`
-- PNG output defaults to high resolution
-- Additional formats such as `svg` can be requested explicitly without replacing `pdf` and `png`
+- Every render pass emits a **vector PDF** *and* a **high-resolution PNG** for every panel and for the assembled figure — on the same pass.
+- PDF (and SVG) are true vector output with embedded Type 42 fonts and a `Creator` metadata tag.
+- PNG/TIFF/JPEG are rasterized at `max(spec_dpi, 600)` so the raster artifact is always publication-ready; PNG is written with `optimize=True`.
+- Additional formats (`svg`, `tiff`, `jpg`) can be requested explicitly without replacing `pdf` and `png`.
 
 ## Commands you will actually use
 

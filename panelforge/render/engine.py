@@ -40,19 +40,33 @@ def _serialize_diagnostics(entries: Iterable[Any]) -> List[Dict[str, Any]]:
     return out
 
 
+HIGH_RES_PNG_DPI = 600
+
+
 def _save_figure(fig: plt.Figure, target: Path, dpi: int) -> None:
+    """Serialize ``fig`` to ``target``.
+
+    PDF (and SVG) are written as true vector output with embedded Type 42
+    fonts. Raster formats (PNG/TIFF/JPEG) are rasterized at
+    ``max(dpi, HIGH_RES_PNG_DPI)`` so every render pass ships a publication-
+    ready bitmap alongside the vector artifact.
+    """
+
     suffix = target.suffix.lower().lstrip(".")
     if suffix in {"pdf", "svg"}:
-        fig.savefig(target, bbox_inches="tight")
+        fig.savefig(target, bbox_inches="tight", metadata={"Creator": "panelforge"})
         return
 
-    save_kwargs = {"bbox_inches": "tight", "dpi": dpi}
+    raster_dpi = max(int(dpi), HIGH_RES_PNG_DPI)
+    save_kwargs = {"bbox_inches": "tight", "dpi": raster_dpi}
     if suffix in {"tiff", "jpg", "jpeg", "png"}:
         format_name = "jpeg" if suffix == "jpg" else suffix
+        if format_name == "png":
+            save_kwargs["pil_kwargs"] = {"optimize": True}
         fig.savefig(target, format=format_name, **save_kwargs)
         return
 
-    fig.savefig(target, format="png", **save_kwargs)
+    fig.savefig(target, format="png", pil_kwargs={"optimize": True}, **save_kwargs)
 
 
 def _safe_filename(value: str) -> str:
@@ -88,7 +102,14 @@ def _resolve_data_path(raw_path: str, spec_dir: Path) -> str:
 
 
 def _normalise_formats(formats: Iterable[str]) -> List[str]:
-    requested = []
+    """Normalise a format list while guaranteeing both PDF and PNG are emitted.
+
+    Every render pass must ship a vector PDF *and* a high-resolution PNG, so
+    those two formats are always present regardless of what the caller requests.
+    Additional formats (``svg``/``tiff``/``jpg``) are appended verbatim.
+    """
+
+    requested: List[str] = []
     for value in formats:
         token = str(value).lower()
         if token in {"pdf", "png", "svg", "tiff", "jpg"} and token not in requested:
