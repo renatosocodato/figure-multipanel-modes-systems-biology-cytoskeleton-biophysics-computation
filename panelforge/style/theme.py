@@ -62,11 +62,13 @@ def short_title(value: Optional[str], max_words: int = MAX_TITLE_WORDS) -> str:
 
 
 def enforce_minimal_theme(ax=None) -> None:
-    """Apply the publication baseline style globally and to a specific axes."""
+    """Apply the publication baseline style.
+
+    Without an ``ax`` argument only ``rcParams`` is updated; no implicit figure is
+    created so batch renders don't leak blank figures into matplotlib's registry.
+    """
 
     plt.rcParams.update(MINIMAL_PARAMS)
-    if ax is None:
-        ax = plt.gca()
     if ax is None:
         return
     ax.tick_params(labelsize=8, color="#4B5563")
