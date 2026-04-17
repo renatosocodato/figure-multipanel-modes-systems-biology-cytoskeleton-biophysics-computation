@@ -1,0 +1,99 @@
+title: "RhoA tristability"
+subtitle: "HOME GATE TRAP wells and pharmacological consequences"
+layout:
+  preset: "C"
+panels:
+  - label: "A"
+    title: "Phase portrait"
+    subtitle: "RhoA-GTP vs p190-GAP tone"
+    tile:
+      label: "A"
+      title: "Phase portrait"
+      subtitle: "2D ODE"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "phase_portrait"
+      data:
+        path: "../data/rhoa_fixedpoints.csv"
+        format: "csv"
+      mappings:
+        x: "x"
+        y: "y"
+        category: "state"
+      options:
+        xlim: [0.0, 3.0]
+        ylim: [0.0, 3.0]
+        grid: 24
+        rhs: "rhoa_tristable_v1"
+        cond: "basal"
+        nullclines: true
+    output_name: "rhoa_panel_A_phase"
+  - label: "B"
+    title: "Potential U"
+    subtitle: "Three-well quasi-potential"
+    tile:
+      label: "B"
+      title: "Potential U"
+      subtitle: "U of x"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "line"
+      data:
+        path: "../data/rhoa_potential_1d.csv"
+        format: "csv"
+      mappings:
+        x: "RhoA_GTP"
+        y: "U"
+        group: "condition"
+    output_name: "rhoa_panel_B_potential"
+  - label: "C"
+    title: "Bifurcation"
+    subtitle: "ROCKi saddle node at r=0.45"
+    tile:
+      label: "C"
+      title: "Bifurcation"
+      subtitle: "saddle node"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "line"
+      data:
+        path: "../data/rhoa_bifurcation.csv"
+        format: "csv"
+      mappings:
+        x: "ROCK_inhibition"
+        y: "RhoA_GTP_ss"
+        group: "branch"
+    output_name: "rhoa_panel_C_bif"
+  - label: "D"
+    title: "Dwell time"
+    subtitle: "Gillespie per state"
+    tile:
+      label: "D"
+      title: "Dwell time"
+      subtitle: "per state"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "violin"
+      data:
+        path: "../data/rhoa_dwell.csv"
+        format: "csv"
+      mappings:
+        x: "state"
+        y: "log10_dwell_s"
+        group: "state"
+    output_name: "rhoa_panel_D_dwell"
+prefix: "fig_rhoa_landscape"
+palette:
+  source: "colorbrewer"
+  family: "qualitative"
+  palette: "Set1"
+  role: "primary"
+render:
+  formats: ["pdf", "png"]
+  dpi: 600
+  width: 4.0
+  height: 3.2

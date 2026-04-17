@@ -1,0 +1,99 @@
+title: "Process length sensitivity"
+subtitle: "Manuscript 3 Box 1 — Sobol GSA on force-balance ODE"
+layout:
+  preset: "C"
+panels:
+  - label: "A"
+    title: "First order"
+    subtitle: "S1 across 8 parameters"
+    tile:
+      label: "A"
+      title: "S1"
+      subtitle: "First order"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "sobol_bar"
+      data:
+        path: "../data/m3_sobol_s1.csv"
+        format: "csv"
+      mappings:
+        category: "parameter"
+        y: "S1"
+        yerr: "S1_ci"
+      options:
+        order: "descending"
+        cmap: "viridis"
+    output_name: "m3_panel_A_sobol_s1"
+  - label: "B"
+    title: "Total order"
+    subtitle: "ST captures interactions"
+    tile:
+      label: "B"
+      title: "ST"
+      subtitle: "Total order"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "sobol_bar"
+      data:
+        path: "../data/m3_sobol_st.csv"
+        format: "csv"
+      mappings:
+        category: "parameter"
+        y: "ST"
+        yerr: "ST_ci"
+      options:
+        order: "descending"
+        cmap: "magma"
+    output_name: "m3_panel_B_sobol_st"
+  - label: "C"
+    title: "Param scan"
+    subtitle: "L_max vs v_poly hexbin"
+    tile:
+      label: "C"
+      title: "Param scan"
+      subtitle: "N=200"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "hexbin"
+      data:
+        path: "../data/m3_scan_vpoly_Lmax.csv"
+        format: "csv"
+      mappings:
+        x: "v_poly_um_per_s"
+        y: "L_max_um"
+      options:
+        gridsize: 20
+    output_name: "m3_panel_C_scan"
+  - label: "D"
+    title: "Pi3 collapse"
+    subtitle: "Dimensionless regression"
+    tile:
+      label: "D"
+      title: "Pi3 collapse"
+      subtitle: "Buckling regime"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "regression_ci"
+      data:
+        path: "../data/m3_pi3_collapse.csv"
+        format: "csv"
+      mappings:
+        x: "log_Pi3"
+        y: "log_Lmax_norm"
+    output_name: "m3_panel_D_pi3"
+prefix: "fig_m3_biophysics"
+palette:
+  source: "colorbrewer"
+  family: "sequential"
+  palette: "Blues"
+  role: "primary"
+  seed: 3
+render:
+  formats: ["pdf", "png"]
+  dpi: 600
+  width: 4.0
+  height: 3.2

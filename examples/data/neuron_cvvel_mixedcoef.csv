@@ -1,0 +1,5 @@
+term,estimate,ci95
+Intercept,0.441,0.018
+sex_Male,0.038,0.029
+geno_KO,0.002,0.031
+sex_Male_x_geno_KO,-0.264,0.041

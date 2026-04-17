@@ -1,0 +1,13 @@
+animal_id,sex,delta_cv,delta_ci
+F_1,Female,0.128,0.022
+F_2,Female,0.141,0.019
+F_3,Female,0.117,0.024
+F_4,Female,0.132,0.021
+F_5,Female,0.124,0.020
+F_6,Female,0.138,0.023
+M_1,Male,-0.131,0.020
+M_2,Male,-0.142,0.018
+M_3,Male,-0.125,0.022
+M_4,Male,-0.139,0.021
+M_5,Male,-0.128,0.019
+M_6,Male,-0.134,0.020

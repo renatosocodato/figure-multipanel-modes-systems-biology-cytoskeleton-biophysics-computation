@@ -1,0 +1,6 @@
+state,x,y,stability
+home,0.15,0.15,stable
+saddle_HG,0.50,0.50,unstable
+gate,0.95,0.95,stable
+saddle_GT,1.60,1.60,unstable
+trap,2.25,2.25,stable

@@ -1,0 +1,96 @@
+title: "Sex divergent cv"
+subtitle: "Cdc42 deletion shifts cv_velocity in opposite directions by sex"
+layout:
+  rows: 2
+  cols: 2
+panels:
+  - label: "A"
+    title: "Split violin"
+    subtitle: "Sex x genotype with animal overlay"
+    tile:
+      label: "A"
+      title: "Split violin"
+      subtitle: "n=3 animals per group"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "split_violin"
+      data:
+        path: "../data/neuron_cvvel_cell.csv"
+        format: "csv"
+      mappings:
+        x: "genotype"
+        y: "cv_velocity"
+        group: "sex"
+      options:
+        overlay: "animal_means"
+    output_name: "neuron_suppl_A_split"
+  - label: "B"
+    title: "Group ridges"
+    subtitle: "Per group single-cell density"
+    tile:
+      label: "B"
+      title: "Group ridges"
+      subtitle: "per sex geno"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "ridge_distribution"
+      data:
+        path: "../data/neuron_cvvel_cell.csv"
+        format: "csv"
+      mappings:
+        x: "cv_velocity"
+        group: "sex_geno"
+      options:
+        bw_adjust: 0.35
+        overlap: 0.35
+    output_name: "neuron_suppl_B_ridge"
+  - label: "C"
+    title: "Animal delta"
+    subtitle: "Per animal KO minus WT"
+    tile:
+      label: "C"
+      title: "Animal delta"
+      subtitle: "animal level"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "dot"
+      data:
+        path: "../data/neuron_cvvel_delta.csv"
+        format: "csv"
+      mappings:
+        x: "delta_cv"
+        y: "animal_id"
+        group: "sex"
+    output_name: "neuron_suppl_C_forest"
+  - label: "D"
+    title: "Mixed model"
+    subtitle: "Sex-geno interaction"
+    tile:
+      label: "D"
+      title: "Mixed model"
+      subtitle: "lmer"
+      status: "pass"
+      outcome: "pass"
+    chart:
+      chart_type: "dot"
+      data:
+        path: "../data/neuron_cvvel_mixedcoef.csv"
+        format: "csv"
+      mappings:
+        x: "estimate"
+        y: "term"
+    output_name: "neuron_suppl_D_mixed"
+prefix: "fig_neuron_suppl_cvvel"
+palette:
+  source: "colorbrewer"
+  family: "qualitative"
+  palette: "Set1"
+  role: "comparison"
+render:
+  formats: ["pdf", "png"]
+  dpi: 600
+  width: 4.2
+  height: 3.4

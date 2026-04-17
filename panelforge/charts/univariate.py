@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 
+import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy.stats import gaussian_kde
 
 from .base import _safe_series, create_panel_axes, RenderContext
 
@@ -77,6 +79,81 @@ def render_violin(ctx: RenderContext, panel=None):
     return fig, ax
 
 
+def render_split_violin(ctx: RenderContext, panel=None):
+    """Split violin by a binary grouping (e.g. sex x genotype) with animal-level overlay.
+
+    Required mappings: x (categorical), y (numeric), group (exactly 2 levels).
+    Optional options.overlay == "animal_means" + column "animal_id" overlays
+    per-animal means as a stripplot.
+    """
+    mappings = ctx.chart_spec.get("mappings", {})
+    opts = ctx.chart_spec.get("options", {})
+    fig, ax = create_panel_axes(ctx.width, ctx.height, panel.title if panel else "", panel.subtitle if panel else "")
+    palette = ctx.palette[:2] if len(ctx.palette) >= 2 else ["#D55E00", "#0072B2"]
+    sns.violinplot(
+        data=ctx.data,
+        x=mappings["x"], y=mappings["y"], hue=mappings["group"],
+        split=True, inner=None, cut=0, linewidth=0.7, density_norm="area",
+        palette=palette, ax=ax,
+    )
+    if opts.get("overlay") == "animal_means" and "animal_id" in ctx.data:
+        grp_means = (
+            ctx.data.groupby(["animal_id", mappings["x"], mappings["group"]])[mappings["y"]]
+            .mean().reset_index()
+        )
+        sns.stripplot(
+            data=grp_means, x=mappings["x"], y=mappings["y"], hue=mappings["group"],
+            dodge=True, size=3, alpha=0.85, palette=palette,
+            linewidth=0.4, edgecolor="white", ax=ax, legend=False,
+        )
+    return fig, ax
+
+
+def render_ridge_distribution(ctx: RenderContext, panel=None):
+    """Ridge plot: one KDE per group stacked vertically.
+
+    Required mappings: x (numeric), group (categorical row variable).
+    Optional options.bw_adjust (default 0.35), overlap (default 0.35).
+    """
+    mappings = ctx.chart_spec.get("mappings", {})
+    opts = ctx.chart_spec.get("options", {})
+    group_col = mappings.get("group")
+    x_col = mappings.get("x")
+    fig, ax = create_panel_axes(ctx.width, ctx.height, panel.title if panel else "", panel.subtitle if panel else "")
+    if group_col not in ctx.data or x_col not in ctx.data:
+        ax.text(0.5, 0.5, "ridge requires x + group mappings",
+                ha="center", va="center")
+        return fig, ax
+    groups = list(ctx.data[group_col].dropna().unique())
+    palette = ctx.palette or ["#4C78A8"]
+    x_min = float(ctx.data[x_col].quantile(0.01))
+    x_max = float(ctx.data[x_col].quantile(0.99))
+    if x_min == x_max:
+        x_max = x_min + 1.0
+    xgrid = np.linspace(x_min, x_max, 400)
+    offset_step = 1.0 - float(opts.get("overlap", 0.35))
+    bw = float(opts.get("bw_adjust", 0.35))
+    for i, g in enumerate(groups):
+        vals = ctx.data.loc[ctx.data[group_col] == g, x_col].dropna().values
+        if len(vals) < 3:
+            continue
+        kde = gaussian_kde(vals, bw_method=bw)
+        y = kde(xgrid)
+        y = y / y.max() * 0.75 if y.max() > 0 else y
+        base = (len(groups) - 1 - i) * offset_step
+        color = palette[i % len(palette)]
+        ax.fill_between(xgrid, base, base + y, color=color, alpha=0.72,
+                        linewidth=0.5, edgecolor="#222")
+        ax.axhline(base, color="#BBBBBB", lw=0.4, zorder=0)
+        ax.text(x_min - (x_max - x_min) * 0.02, base + 0.35, str(g),
+                fontsize=7.5, fontweight="bold", color=color,
+                va="center", ha="right")
+    ax.set_ylim(-0.2, len(groups) * offset_step + 0.3)
+    ax.set_yticks([])
+    ax.spines["left"].set_visible(False)
+    return fig, ax
+
+
 def render_dot(ctx: RenderContext, panel=None):
     mappings = ctx.chart_spec.get("mappings", {})
     x = _safe_series(ctx.data, mappings.get("x"))
@@ -95,6 +172,8 @@ def render(ctx: RenderContext, chart_type: str, panel=None):
         "ecdf": render_ecdf,
         "box": render_box,
         "violin": render_violin,
+        "split_violin": render_split_violin,
+        "ridge_distribution": render_ridge_distribution,
         "dot": render_dot,
         "dot_plot": render_dot,
     }
