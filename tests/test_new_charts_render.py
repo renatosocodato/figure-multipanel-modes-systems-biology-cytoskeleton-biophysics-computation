@@ -137,6 +137,68 @@ def test_phase_portrait_honours_custom_xy_mappings() -> None:
     assert fig is not None and ax is not None
 
 
+def test_split_violin_falls_back_for_non_binary_groups() -> None:
+    """Three-level group must not raise; render falls back to unsplit with a warning."""
+    import pandas as pd
+
+    from panelforge.charts.base import RenderContext
+    from panelforge.charts.univariate import render_split_violin
+
+    data = pd.DataFrame(
+        {
+            "x": ["a"] * 15,
+            "y": list(range(15)),
+            "g": (["g1"] * 5 + ["g2"] * 5 + ["g3"] * 5),
+        }
+    )
+    ctx = RenderContext(
+        data=data,
+        chart_spec={"mappings": {"x": "x", "y": "y", "group": "g"}, "options": {}},
+        palette=["#D55E00", "#0072B2"],
+        width=3.0,
+        height=2.4,
+    )
+    fig, ax = render_split_violin(ctx, panel=None)
+    warning_texts = [t.get_text() for t in ax.texts if "needs 2 group levels" in t.get_text()]
+    assert warning_texts, "fallback warning pill should be rendered"
+
+
+def test_phase_portrait_respects_options_potential_override() -> None:
+    """options.potential must select the contour backdrop independently of options.rhs."""
+    import pandas as pd
+
+    from panelforge.charts.base import RenderContext
+    from panelforge.charts.bivariate import render_phase_portrait
+
+    data = pd.DataFrame(
+        {"state": ["home"], "x": [0.15], "y": [0.15], "stability": ["stable"]}
+    )
+    base_spec = {
+        "mappings": {"x": "x", "y": "y"},
+        "options": {
+            "xlim": [0.0, 3.0],
+            "ylim": [0.0, 3.0],
+            "grid": 6,
+            "rhs": "rhoa_tristable_v1",
+            "cond": "basal",
+            "nullclines": False,
+        },
+    }
+
+    # Baseline: backdrop present (countourf draws one collection).
+    ctx_default = RenderContext(data=data, chart_spec=base_spec, palette=["#111"], width=3.0, height=2.4)
+    _, ax_default = render_phase_portrait(ctx_default, panel=None)
+    default_collections = len(ax_default.collections)
+
+    # Explicit override to disable: fewer collections than the default backdrop case.
+    override_spec = {**base_spec, "options": {**base_spec["options"], "potential": "none"}}
+    ctx_off = RenderContext(data=data, chart_spec=override_spec, palette=["#111"], width=3.0, height=2.4)
+    _, ax_off = render_phase_portrait(ctx_off, panel=None)
+    assert len(ax_off.collections) < default_collections, (
+        "options.potential='none' should suppress the contour backdrop"
+    )
+
+
 def test_hierarchical_ci_sem_uses_per_bin_cluster_count() -> None:
     """SEM denominator must be the observed cluster count at each x-bin, not total columns."""
     import numpy as np

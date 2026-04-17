@@ -83,6 +83,9 @@ def render_split_violin(ctx: RenderContext, panel=None):
     """Split violin by a binary grouping (e.g. sex x genotype) with animal-level overlay.
 
     Required mappings: x (categorical), y (numeric), group (exactly 2 levels).
+    If the group column has a cardinality other than 2, the panel falls back
+    to a regular (non-split) violinplot and renders a small warning pill
+    rather than aborting figure generation.
     Optional options.overlay == "animal_means" + column "animal_id" overlays
     per-animal means as a stripplot.
     """
@@ -90,12 +93,32 @@ def render_split_violin(ctx: RenderContext, panel=None):
     opts = ctx.chart_spec.get("options", {})
     fig, ax = create_panel_axes(ctx.width, ctx.height, panel.title if panel else "", panel.subtitle if panel else "")
     palette = ctx.palette[:2] if len(ctx.palette) >= 2 else ["#D55E00", "#0072B2"]
-    sns.violinplot(
-        data=ctx.data,
-        x=mappings["x"], y=mappings["y"], hue=mappings["group"],
-        split=True, inner=None, cut=0, linewidth=0.7, density_norm="area",
-        palette=palette, ax=ax,
+    group_col = mappings.get("group")
+    group_levels = (
+        ctx.data[group_col].dropna().unique().tolist()
+        if group_col and group_col in ctx.data.columns
+        else []
     )
+    split = len(group_levels) == 2
+    if not split:
+        ax.text(
+            0.98, 0.98,
+            f"split_violin needs 2 group levels (got {len(group_levels)}); rendering unsplit",
+            transform=ax.transAxes, ha="right", va="top",
+            fontsize=7, color="#991B1B",
+            bbox={"boxstyle": "round,pad=0.25", "facecolor": "#FEF2F2",
+                  "edgecolor": "#DC2626", "linewidth": 0.6},
+        )
+    violin_kwargs = dict(
+        data=ctx.data,
+        x=mappings["x"], y=mappings["y"],
+        inner=None, cut=0, linewidth=0.7, density_norm="area", ax=ax,
+    )
+    if split:
+        violin_kwargs.update(hue=group_col, split=True, palette=palette)
+    else:
+        violin_kwargs["color"] = palette[0]
+    sns.violinplot(**violin_kwargs)
     if opts.get("overlay") == "animal_means" and "animal_id" in ctx.data:
         grp_means = (
             ctx.data.groupby(["animal_id", mappings["x"], mappings["group"]])[mappings["y"]]

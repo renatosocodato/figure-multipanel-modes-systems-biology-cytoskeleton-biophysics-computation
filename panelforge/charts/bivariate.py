@@ -130,13 +130,16 @@ def render_correlogram(ctx: RenderContext, panel=None):
 def render_phase_portrait(ctx: RenderContext, panel=None):
     """2D ODE phase portrait: contour backdrop + gradient streamplot + fixed points.
 
-    Reads `options.rhs` as a key into `panelforge.dynamics.RHS_REGISTRY` and
-    `options.potential` (optional) as a key into `POTENTIAL_REGISTRY` for the
-    contour backdrop. Fixed points come from the `data` frame. Coordinate
-    columns are resolved through `mappings.x` / `mappings.y` (defaulting to
-    "x" / "y"); the per-state label column is `mappings.category` (falling
-    back to "state" or "category"); optional `stability` column drives the
-    stable/unstable marker style. Labels are halo'd for legibility.
+    Reads `options.rhs` as a key into `panelforge.dynamics.RHS_REGISTRY` for
+    the vector field, and `options.potential` as an independent key into
+    `POTENTIAL_REGISTRY` for the contour backdrop. `potential` defaults to
+    `rhs` when omitted, and the key sentinel `false`/`null`/`"none"`
+    disables the backdrop entirely. Fixed points come from the `data`
+    frame. Coordinate columns are resolved through `mappings.x`/
+    `mappings.y` (defaulting to "x" / "y"); the per-state label column is
+    `mappings.category` (falling back to "state" or "category"); optional
+    `stability` column drives the stable/unstable marker style. Labels are
+    halo'd for legibility.
     """
     from ..dynamics import RHS_REGISTRY, POTENTIAL_REGISTRY
 
@@ -150,6 +153,18 @@ def render_phase_portrait(ctx: RenderContext, panel=None):
     grid = int(opts.get("grid", 30))
     rhs_key = opts.get("rhs")
     cond = opts.get("cond", "basal")
+    # `potential` defaults to the RHS key; explicit false/null/"none" disables
+    # the backdrop even when the RHS does have a registered potential.
+    if "potential" in opts:
+        raw_potential = opts["potential"]
+        if raw_potential is False or raw_potential is None or (
+            isinstance(raw_potential, str) and raw_potential.lower() in {"", "none", "off"}
+        ):
+            potential_key = None
+        else:
+            potential_key = str(raw_potential)
+    else:
+        potential_key = rhs_key
 
     fig, ax = create_panel_axes(ctx.width, ctx.height, panel.title if panel else "", panel.subtitle if panel else "")
 
@@ -158,9 +173,9 @@ def render_phase_portrait(ctx: RenderContext, panel=None):
         return fig, ax
     f = RHS_REGISTRY[rhs_key]
 
-    # Contour backdrop from potential (if registered)
-    if rhs_key in POTENTIAL_REGISTRY:
-        U_fn = POTENTIAL_REGISTRY[rhs_key]
+    # Contour backdrop from the configured potential (if registered).
+    if potential_key and potential_key in POTENTIAL_REGISTRY:
+        U_fn = POTENTIAL_REGISTRY[potential_key]
         xg = np.linspace(xlim[0] + 1e-3, xlim[1], 200)
         yg = np.linspace(ylim[0] + 1e-3, ylim[1], 200)
         XX, YY = np.meshgrid(xg, yg)
