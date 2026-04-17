@@ -142,9 +142,11 @@ render:
 
 ## Style contract
 
-- Arial-first rendering is enforced where the environment supports it.
+- Helvetica-first rendering (Helvetica → Helvetica Neue → Arial → Liberation Sans → sans) with embedded Type 42 fonts in PDF/PS and untouched SVG text for downstream editability.
+- Large bold panel labels (`A`, `B`, `C`…) anchored outside each axes; titles render centred above the plot; subtitle and status collapse into a quiet grey meta-line.
+- Grid-free axes, thin grey spines on left and bottom only, and outcome pills styled per `pass / warn / fail` semantics.
+- Colored annotation pills (`ok`, `warn`, `info`, `accent`) and figure-level row separators + footer captions available as first-class helpers in `panelforge.style`.
 - Figure and panel subtitles are first-class metadata, not afterthoughts.
-- Panel tiles carry label, title, subtitle, status, and outcome cues.
 - The visual baseline stays minimal and restrained so panels can mix across analysis domains without looking incoherent.
 
 ## Python and R parity
@@ -154,7 +156,7 @@ Python and R both render from the same YAML structure.
 - Python path: `panelforge render ...`
 - R path: `Rscript R/panel_renderer.R examples/specs/single_panel.yaml outputs/r-run`
 
-The R renderer prefers Arial when available and degrades safely to `sans` when it is not installed.
+The R renderer walks the same sans-serif stack (Helvetica → Helvetica Neue → Arial → Liberation Sans) and degrades safely to `sans` when none is installed.
 
 ## Contributing
 
@@ -162,4 +164,4 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md). If you add a chart family, adapte
 
 ## Current release
 
-The repository is published and currently aligned to `v0.1.3`.
+The repository is published and currently aligned to `v0.1.4`.

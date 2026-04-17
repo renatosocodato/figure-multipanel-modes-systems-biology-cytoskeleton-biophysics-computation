@@ -17,7 +17,7 @@ from ..schema import FigureSpec, PaletteSpec
 from ..charts.base import RenderContext
 from ..charts.registry import registry
 from ..manifests.core import ManifestBuilder, save_manifest
-from ..style.theme import enforce_minimal_theme, tile_axes
+from ..style.theme import enforce_minimal_theme, footer_caption, row_separator, tile_axes
 from ..transforms.core import apply_transforms, infer_missing_columns, suggest_mappings
 
 
@@ -304,16 +304,29 @@ def _render_single_panel(panel, render_conf, palette_info: Dict[str, Any], spec_
     fig, ax = renderer(ctx, chart_type, panel=panel)
     enforce_minimal_theme(ax)
     tile_axes(ax, panel.tile.label, panel.tile.title, panel.tile.subtitle, panel.tile.status)
-    if panel.tile.outcome and str(panel.tile.outcome).lower() not in {"", "none", "na"}:
+    outcome = str(panel.tile.outcome or "").lower()
+    if outcome and outcome not in {"none", "na"}:
+        outcome_palette = {
+            "pass": {"face": "#F0FDF4", "edge": "#16A34A", "text": "#166534"},
+            "warn": {"face": "#FEF3C7", "edge": "#D97706", "text": "#92400E"},
+            "fail": {"face": "#FEF2F2", "edge": "#DC2626", "text": "#991B1B"},
+        }.get(outcome, {"face": "#F9FAFB", "edge": "#9CA3AF", "text": "#1F2937"})
         ax.text(
             0.98,
             0.02,
-            str(panel.tile.outcome).upper(),
+            outcome.upper(),
             transform=ax.transAxes,
             fontsize=7,
+            fontweight="bold",
+            color=outcome_palette["text"],
             ha="right",
             va="bottom",
-            bbox={"boxstyle": "round,pad=0.1", "facecolor": "#ecfdf3", "edgecolor": "#16a34a"},
+            bbox={
+                "boxstyle": "round,pad=0.2",
+                "facecolor": outcome_palette["face"],
+                "edgecolor": outcome_palette["edge"],
+                "linewidth": 0.6,
+            },
         )
     fig.tight_layout()
     status = "warn" if diagnostics else "ok"
@@ -361,6 +374,7 @@ def render_panel(panel, output_dir: Path, render_conf, palette_info: Dict[str, A
 
 def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: Path, formats: Optional[Iterable[str]] = None) -> Dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    enforce_minimal_theme()
     resolved_formats = _normalise_formats(formats or spec.render.formats)
     render_rows, render_cols = _layout_from_spec(len(panels), spec.layout.preset, spec.layout.rows, spec.layout.cols)
     fig, axes = plt.subplots(render_rows, render_cols, figsize=(spec.render.width * render_cols, spec.render.height * render_rows))
@@ -368,11 +382,11 @@ def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: 
     figure_title = str(spec.title or "").strip()
     figure_subtitle = str(spec.subtitle or "").strip()
     if figure_title and figure_subtitle:
-        fig.suptitle(f"{figure_title}\n{figure_subtitle}", fontsize=12, fontweight="bold")
+        fig.suptitle(f"{figure_title}\n{figure_subtitle}", fontsize=12, fontweight="bold", color="#111827")
     elif figure_title:
-        fig.suptitle(figure_title, fontsize=12, fontweight="bold")
+        fig.suptitle(figure_title, fontsize=12, fontweight="bold", color="#111827")
     else:
-        fig.suptitle("Figure", fontsize=12, fontweight="bold")
+        fig.suptitle("Figure", fontsize=12, fontweight="bold", color="#111827")
 
     for axis in axes:
         axis.set_axis_off()
@@ -384,11 +398,19 @@ def assemble_figure(spec: FigureSpec, panels: List[Dict[str, Any]], output_dir: 
             continue
         axis = axes[idx]
         axis.set_axis_off()
-        axis.set_title(panel.get("label", ""))
         axis.imshow(mpimg.imread(png))
 
-    plt.tight_layout()
-    enforce_minimal_theme()
+    fig.tight_layout(rect=(0.0, 0.035, 1.0, 0.96))
+
+    if render_rows > 1:
+        for row in range(1, render_rows):
+            y = 1.0 - row / render_rows
+            y_adj = 0.04 + (y * (0.96 - 0.08))
+            row_separator(fig, y_adj)
+
+    caption_bits = [bit for bit in (figure_subtitle, f"panels: {len(panels)}") if bit]
+    if caption_bits:
+        footer_caption(fig, " · ".join(caption_bits))
 
     out_files: Dict[str, str] = {}
     for fmt in resolved_formats:

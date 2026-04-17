@@ -1,4 +1,17 @@
-from .theme import enforce_minimal_theme, tile_axes
+from .theme import (
+    annotation_note,
+    enforce_minimal_theme,
+    footer_caption,
+    panel_label,
+    row_separator,
+    tile_axes,
+)
 
-__all__ = ["enforce_minimal_theme", "tile_axes"]
-
+__all__ = [
+    "annotation_note",
+    "enforce_minimal_theme",
+    "footer_caption",
+    "panel_label",
+    "row_separator",
+    "tile_axes",
+]

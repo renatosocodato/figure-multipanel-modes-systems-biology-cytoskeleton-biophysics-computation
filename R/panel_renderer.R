@@ -33,12 +33,16 @@ is_font_available <- function(family) {
   }, error = function(...) FALSE)
 }
 
-plot_font_family <- if (is_font_available("Arial")) {
-  "Arial"
-} else {
-  message("R renderer: Arial unavailable, using sans as fallback font.")
+plot_font_family <- local({
+  preferred <- c("Helvetica", "Helvetica Neue", "Arial", "Liberation Sans")
+  for (family in preferred) {
+    if (is_font_available(family)) {
+      return(family)
+    }
+  }
+  message("R renderer: Helvetica/Arial unavailable, using sans as fallback font.")
   "sans"
-}
+})
 
 draw_grid_text <- function(label, x, y, gp, fallback_family = "sans") {
   tryCatch(
@@ -167,15 +171,17 @@ resolve_data_path <- function(path, spec_dir) {
 }
 
 minimal_theme <- function() {
-  theme_minimal(base_family = plot_font_family, base_size = 10) +
+  theme_minimal(base_family = plot_font_family, base_size = 9) +
     theme(
-      plot.title = element_text(face = "bold", size = 12, colour = "#111827"),
-      plot.subtitle = element_text(size = 9.5, colour = "#374151"),
-      axis.title = element_text(size = 9.5),
-      panel.grid.major = element_line(color = "#E5E7EB", linewidth = 0.25),
-      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 10, colour = "#111827", hjust = 0.5, margin = margin(b = 6)),
+      plot.subtitle = element_text(size = 8, colour = "#6B7280", hjust = 0.5),
+      axis.title = element_text(size = 9, colour = "#111827"),
+      axis.text = element_text(size = 8, colour = "#4B5563"),
+      axis.line = element_line(color = "#4B5563", linewidth = 0.4),
+      axis.ticks = element_line(color = "#4B5563", linewidth = 0.4),
+      panel.grid = element_blank(),
       panel.border = element_blank(),
-      axis.ticks = element_line(color = "#9CA3AF", linewidth = 0.3),
+      plot.margin = margin(t = 18, r = 10, b = 8, l = 22),
       legend.position = "none"
     )
 }
@@ -201,11 +207,31 @@ infer_mappings <- function(chart, data) {
 
 add_tile <- function(p, panel_label, title, subtitle, status) {
   label <- coalesce(panel_label, "panel")
-  subtitle_text <- paste0("[", label, "] ", coalesce(title, "Panel"), ifelse(is.null(subtitle) || is.na(subtitle) || subtitle == "", "", paste0(" — ", subtitle)))
-  if (!is.null(status) && !is.na(status) && nzchar(status)) {
-    subtitle_text <- paste0(subtitle_text, " | ", status)
+  meta_bits <- c()
+  if (!is.null(subtitle) && !is.na(subtitle) && nzchar(subtitle)) meta_bits <- c(meta_bits, subtitle)
+  if (!is.null(status) && !is.na(status) && nzchar(status)) meta_bits <- c(meta_bits, status)
+  p <- p + annotation_custom(
+    grob = grid::textGrob(
+      label = label,
+      x = grid::unit(0, "npc"),
+      y = grid::unit(1, "npc"),
+      hjust = 0,
+      vjust = 0,
+      gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 14, col = "#111827")
+    ),
+    xmin = -Inf, xmax = -Inf, ymin = Inf, ymax = Inf
+  )
+  if (length(meta_bits) > 0L) {
+    p <- p + annotate(
+      "text",
+      x = Inf, y = Inf,
+      hjust = 1.02, vjust = -0.4,
+      size = 2.6, color = "#6B7280",
+      family = plot_font_family,
+      label = paste(meta_bits, collapse = " \u00B7 ")
+    )
   }
-  p + annotate("text", x = -Inf, y = Inf, hjust = -0.02, vjust = 1.35, size = 3.1, fontface = "bold", label = subtitle_text, color = "#111827")
+  p
 }
 
 safe_numeric <- function(values) {
@@ -533,16 +559,16 @@ render_assembled_figure <- function(plots, figure_title, figure_subtitle, out_di
         draw_grid_text(
           label = plot_title,
           x = 0.5,
-          y = 0.75,
-          gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 20)
+          y = 0.78,
+          gp = grid::gpar(fontfamily = plot_font_family, fontface = "bold", fontsize = 18, col = "#111827")
         )
       }
       if (!is.null(figure_subtitle) && !is.na(figure_subtitle) && nzchar(figure_subtitle)) {
         draw_grid_text(
           label = figure_subtitle,
           x = 0.5,
-          y = 0.25,
-          gp = grid::gpar(fontfamily = plot_font_family, fontface = "plain", fontsize = 16)
+          y = 0.32,
+          gp = grid::gpar(fontfamily = plot_font_family, fontface = "plain", fontsize = 11, col = "#6B7280")
         )
       }
 
