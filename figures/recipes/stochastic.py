@@ -25,15 +25,20 @@ def dwell_violin(ax, contract, palette: str = "home_gate_trap"):
     states = list(c.df[c.state_col].dropna().unique())
     for i, state in enumerate(states):
         vals = c.df.loc[c.df[c.state_col] == state, c.log10_dwell_col].dropna().values
-        if len(vals) < 3:
+        if len(vals) == 0:
             continue
         col = pal.semantic.get(state.lower(), pal.categorical[i % len(pal.categorical)])
+        median = float(np.median(vals))
+        # Degenerate cohorts (constant values) make gaussian_kde singular; draw
+        # a tick at the shared value instead so the state still appears.
+        if len(vals) < 3 or float(np.ptp(vals)) <= 0.0 or float(np.var(vals)) <= 1e-18:
+            ax.hlines(median, i - 0.25, i + 0.25, color=col, linewidth=1.2)
+            continue
         kde = gaussian_kde(vals)
         ys = np.linspace(vals.min(), vals.max(), 128)
         xs = kde(ys); xs = xs / xs.max() * 0.38
         ax.fill_betweenx(ys, i - xs, i + xs, color=col, alpha=0.75, linewidth=0.5,
                          edgecolor="#222")
-        median = float(np.median(vals))
         q1, q3 = np.percentile(vals, [25, 75])
         ax.hlines([median], i - 0.25, i + 0.25, color="#111", linewidth=1.2)
         ax.vlines(i, q1, q3, color="#111", linewidth=0.8)

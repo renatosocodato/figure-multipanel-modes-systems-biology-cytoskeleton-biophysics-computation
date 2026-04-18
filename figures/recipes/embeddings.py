@@ -42,15 +42,21 @@ def umap_scatter(ax, contract, palette: str = "okabe_ito"):
     else:
         ax.scatter(x, y, s=6, color=get_palette(palette).categorical[0],
                    alpha=0.7, linewidth=0)
-    if c.density_contours:
+    if c.density_contours and len(x) >= 3 and float(np.ptp(x)) > 0 and float(np.ptp(y)) > 0:
         from scipy.stats import gaussian_kde
 
-        kde = gaussian_kde(np.vstack([x, y]))
-        xgrid = np.linspace(x.min(), x.max(), 80)
-        ygrid = np.linspace(y.min(), y.max(), 80)
-        XX, YY = np.meshgrid(xgrid, ygrid)
-        ZZ = kde(np.vstack([XX.ravel(), YY.ravel()])).reshape(XX.shape)
-        ax.contour(XX, YY, ZZ, levels=5, colors="#455A64", linewidths=0.6, alpha=0.6)
+        try:
+            kde = gaussian_kde(np.vstack([x, y]))
+        except (np.linalg.LinAlgError, ValueError):
+            # Zero-variance / singular-covariance embedding — skip contours.
+            kde = None
+        if kde is not None:
+            xgrid = np.linspace(x.min(), x.max(), 80)
+            ygrid = np.linspace(y.min(), y.max(), 80)
+            XX, YY = np.meshgrid(xgrid, ygrid)
+            ZZ = kde(np.vstack([XX.ravel(), YY.ravel()])).reshape(XX.shape)
+            ax.contour(XX, YY, ZZ, levels=5, colors="#455A64",
+                       linewidths=0.6, alpha=0.6)
     if c.highlight_ids:
         # Match against whichever column actually carries IDs in the caller's
         # metadata — the DataFrame index by default (typical for single-cell

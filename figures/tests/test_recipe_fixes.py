@@ -257,3 +257,72 @@ def test_calcium_raster_handles_empty_events() -> None:
         assert len(fig.get_axes()) == 1
     finally:
         plt.close(fig)
+
+
+def test_calcium_raster_handles_single_timestamp() -> None:
+    """All events at one timestamp must not crash histogram binning (P2)."""
+
+    import pandas as pd
+
+    from figures.core.contract import CalciumRasterInput
+    from figures.recipes.timecourses import calcium_raster
+
+    apply_style()
+    events = pd.DataFrame({"cell_id": [0, 1, 2], "t": [5.0, 5.0, 5.0]})
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        calcium_raster(ax, CalciumRasterInput(events=events, bin_size=1.0))
+        # Expect a twin-x axis (population rate) when the raster path runs.
+        assert len(fig.get_axes()) == 2, (
+            "twin-x axis should exist — raster path must succeed"
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_split_violin_survives_zero_variance_cohort() -> None:
+    """Groups with ≥3 identical values must not trigger singular-covariance crash (P2)."""
+
+    import pandas as pd
+
+    from figures.core.contract import DistributionByGroupInput
+    from figures.recipes.distributions import split_violin
+
+    apply_style()
+    rows = [
+        # Four cohorts, one of which is degenerate (all 0.5) for hue=M in geno=KO.
+        *[{"geno": "WT", "sex": "F", "v": 0.4 + 0.01 * i} for i in range(10)],
+        *[{"geno": "WT", "sex": "M", "v": 0.5 + 0.01 * i} for i in range(10)],
+        *[{"geno": "KO", "sex": "F", "v": 0.6 + 0.01 * i} for i in range(10)],
+        *[{"geno": "KO", "sex": "M", "v": 0.75} for _ in range(10)],  # degenerate
+    ]
+    contract = DistributionByGroupInput(df=pd.DataFrame(rows), value_col="v",
+                                        group_col="geno", hue_col="sex")
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        split_violin(ax, contract)
+        # The degenerate side must render as a tick (hline collection), not raise.
+        hlines = [coll for coll in ax.collections
+                  if coll.__class__.__name__ == "LineCollection"]
+        assert hlines, "expected fallback tick for the degenerate cohort"
+    finally:
+        plt.close(fig)
+
+
+def test_ridge_by_group_survives_zero_variance_group() -> None:
+    """ridge_by_group must not crash when a group has identical values (P2)."""
+
+    import pandas as pd
+
+    from figures.core.contract import RidgeInput
+    from figures.recipes.distributions import ridge_by_group
+
+    apply_style()
+    rows = [{"g": "A", "v": 0.5}] * 8 + [{"g": "B", "v": 0.1 + 0.02 * i} for i in range(20)]
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        ridge_by_group(ax, RidgeInput(df=pd.DataFrame(rows), value_col="v", group_col="g"))
+        # Degenerate group renders as a vertical spike (vlines → LineCollection).
+        assert any(c.__class__.__name__ == "LineCollection" for c in ax.collections)
+    finally:
+        plt.close(fig)

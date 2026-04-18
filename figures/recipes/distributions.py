@@ -28,6 +28,20 @@ def _positions(df: pd.DataFrame, group_col: str) -> tuple[list, dict[object, int
     return levels, {level: idx for idx, level in enumerate(levels)}
 
 
+def _is_degenerate(values: np.ndarray) -> bool:
+    """True when KDE would hit a singular-covariance error.
+
+    Two independent checks: (1) variance below a tight floor — catches exact
+    duplicates after rounding; (2) peak-to-peak zero — catches exact identity.
+    """
+
+    if len(values) < 3:
+        return True
+    if float(np.ptp(values)) <= 0.0:
+        return True
+    return float(np.var(values)) <= 1e-18
+
+
 def split_violin(ax, contract, palette: str = "sex_x_genotype"):
     """Violin halves per binary ``hue_col`` grouped on ``group_col``."""
 
@@ -46,7 +60,18 @@ def split_violin(ax, contract, palette: str = "sex_x_genotype"):
     width = 0.38
     for i, (lv, rv) in enumerate(zip(left_vals, right_vals)):
         for side, vals, col in (("left", lv, pal[0]), ("right", rv, pal[1])):
-            if len(vals) < 3:
+            if len(vals) == 0:
+                continue
+            if _is_degenerate(vals):
+                # Zero-variance cohort (e.g., all rounded to the same value) —
+                # gaussian_kde would raise on singular covariance. Fall back to
+                # a thin horizontal tick at the constant value so the cohort is
+                # still represented in the panel.
+                y_const = float(vals[0])
+                left_edge = i - width if side == "left" else i
+                right_edge = i if side == "left" else i + width
+                ax.hlines(y_const, left_edge, right_edge, color=col,
+                          linewidth=1.2, alpha=0.9)
                 continue
             kde = gaussian_kde(vals)
             ys = np.linspace(vals.min(), vals.max(), 128)
@@ -102,15 +127,21 @@ def ridge_by_group(ax, contract, palette: str = "okabe_ito"):
     offset_step = 1.0 - float(c.overlap)
     for i, g in enumerate(groups):
         vals = c.df.loc[c.df[c.group_col] == g, c.value_col].dropna().values
-        if len(vals) < 3:
-            continue
-        kde = gaussian_kde(vals, bw_method=float(c.bw_adjust))
-        y = kde(xgrid)
-        y = (y / y.max() * 0.75) if y.max() > 0 else y
         base = (len(groups) - 1 - i) * offset_step
         col = pal[i % len(pal)]
-        ax.fill_between(xgrid, base, base + y, color=col, alpha=0.75,
-                        linewidth=0.5, edgecolor="#222")
+        if len(vals) == 0:
+            continue
+        if _is_degenerate(vals):
+            # Degenerate (constant) cohort — render a single vertical spike at
+            # the shared value so the row still appears.
+            ax.vlines(float(vals[0]), base, base + 0.75, color=col, linewidth=1.3,
+                      alpha=0.9)
+        else:
+            kde = gaussian_kde(vals, bw_method=float(c.bw_adjust))
+            y = kde(xgrid)
+            y = (y / y.max() * 0.75) if y.max() > 0 else y
+            ax.fill_between(xgrid, base, base + y, color=col, alpha=0.75,
+                            linewidth=0.5, edgecolor="#222")
         ax.axhline(base, color="#BBBBBB", linewidth=0.4, zorder=0)
         ax.text(x_min - (x_max - x_min) * 0.015, base + 0.35, str(g),
                 fontsize=7.5, fontweight="bold", color=col, va="center", ha="right")

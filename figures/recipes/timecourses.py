@@ -205,7 +205,14 @@ def calcium_raster(ax, contract, palette: str = "okabe_ito"):
                marker="|", color=pal[0], s=12, linewidths=0.7)
     t_min = float(events[c.time_col].min())
     t_max = float(events[c.time_col].max())
+    # np.arange with start == stop yields a single edge; np.histogram needs ≥ 2.
+    # When all timestamps coincide, widen the window by one bin so we get an
+    # unambiguous [t_min, t_min + bin_size] histogram bin.
+    if t_max <= t_min:
+        t_max = t_min + float(c.bin_size)
     bins = np.arange(t_min, t_max + c.bin_size, c.bin_size)
+    if bins.size < 2:
+        bins = np.array([t_min, t_min + float(c.bin_size)])
     rate, edges = np.histogram(events[c.time_col].values, bins=bins)
     centers = 0.5 * (edges[:-1] + edges[1:])
     # Population rate on twin y on lower 20 %.
