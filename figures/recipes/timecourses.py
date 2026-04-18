@@ -76,25 +76,52 @@ def _hill(x, bottom, top, ec50, hill):
 
 
 def dose_response(ax, contract, palette: str = "okabe_ito"):
-    """4-parameter Hill fit with bootstrap-free CI via linearized variance."""
+    """4-parameter Hill fit, zero-dose-control safe.
+
+    Doses ≤ 0 (typical for vehicle / zero-dose controls) are kept on the
+    axis but excluded from the Hill fit. The x-axis switches to ``symlog``
+    with a narrow linear window around zero whenever such values are
+    present, so the control point shows up alongside the log-spaced dose
+    series without forcing a divide-by-zero.
+    """
 
     c = DoseResponseInput.model_validate(contract)
     pal = iter_palette(get_palette(palette).categorical, 2)
     dose = np.asarray(c.dose, dtype=float)
     response = np.asarray(c.response, dtype=float)
+    sem = np.asarray(c.response_sem, dtype=float) if c.response_sem is not None else None
+
+    positive = dose > 0
+    has_zero = not positive.all()
+
     ax.errorbar(dose, response,
-                yerr=c.response_sem if c.response_sem is not None else None,
+                yerr=sem if sem is not None else None,
                 fmt="o", color=pal[0], markersize=4, capsize=2, linewidth=0.7)
-    try:
-        p0 = [float(response.min()), float(response.max()), float(c.ec50_guess), 1.0]
-        popt, _ = curve_fit(_hill, dose, response, p0=p0, maxfev=4000)
-        xs = np.logspace(np.log10(max(dose.min(), 1e-6)), np.log10(dose.max()), 200)
-        ax.plot(xs, _hill(xs, *popt), color="#111", linewidth=1.3)
-        ec50 = popt[2]
-        dashed_reference(ax, ec50, axis="x", color=pal[1], label=f"EC50={ec50:.2g}")
-    except (RuntimeError, ValueError):
-        pass
-    ax.set_xscale("log")
+
+    fit_dose = dose[positive]
+    fit_response = response[positive]
+    if len(fit_dose) >= 4:
+        try:
+            p0 = [float(fit_response.min()), float(fit_response.max()),
+                  float(c.ec50_guess), 1.0]
+            popt, _ = curve_fit(_hill, fit_dose, fit_response, p0=p0, maxfev=4000)
+            xs = np.logspace(np.log10(max(fit_dose.min(), 1e-6)),
+                             np.log10(fit_dose.max()), 200)
+            ax.plot(xs, _hill(xs, *popt), color="#111", linewidth=1.3)
+            ec50 = popt[2]
+            if ec50 > 0:
+                dashed_reference(ax, ec50, axis="x", color=pal[1],
+                                 label=f"EC50={ec50:.2g}")
+        except (RuntimeError, ValueError):
+            pass
+
+    if has_zero and positive.any():
+        # Linear window wide enough for zero to render, transitioning to log.
+        linthresh = float(fit_dose.min()) / 2.0
+        ax.set_xscale("symlog", linthresh=max(linthresh, 1e-12))
+    elif positive.any():
+        ax.set_xscale("log")
+    # else: all doses non-positive — leave linear so the controls still render.
     ax.set_xlabel("dose")
     ax.set_ylabel("response")
     return ax

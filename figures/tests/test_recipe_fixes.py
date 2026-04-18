@@ -8,12 +8,16 @@ import pytest
 from figures.core.contract import (
     AiryscanGridInput,
     BifurcationInput,
+    DoseResponseInput,
     TrajectoryOverlayInput,
 )
+from figures.core.layout import figure_with_grid
 from figures.core.style import apply_style
 from figures.recipes.dynamics import bifurcation
 from figures.recipes.embeddings import trajectory_overlay
 from figures.recipes.morphometry import airyscan_panel_grid
+from figures.recipes.timecourses import dose_response
+from figures.themes.nature import COLUMN_WIDTH_IN
 
 
 def test_airyscan_panel_grid_handles_empty_image_stack() -> None:
@@ -99,6 +103,47 @@ def test_trajectory_overlay_does_not_wrap_last_to_first() -> None:
         # emit n (including the spurious last-to-first arrow).
         assert n_arrows == n - 1, (
             f"expected {n - 1} arrows (src→dst pairs), got {n_arrows} — likely wrapping"
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_figure_with_grid_applies_theme_fig_sizing() -> None:
+    """figure_with_grid must dispatch the theme to fig so width clamps run (P2)."""
+
+    fig, _axes = figure_with_grid(4, figsize="double", theme="nature")
+    try:
+        w, _ = fig.get_size_inches()
+        assert pytest.approx(w, rel=1e-3) == COLUMN_WIDTH_IN, (
+            f"theme nature should clamp width to {COLUMN_WIDTH_IN}, got {w}"
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_dose_response_handles_zero_dose_control() -> None:
+    """Zero-dose controls must render (not drop from log axis) and not crash the fit (P2)."""
+
+    apply_style()
+    # Include a 0-dose control followed by a log-spaced dose series.
+    dose = np.concatenate(([0.0], np.logspace(-2, 2, 8)))
+    response = np.concatenate(([0.05], np.linspace(0.1, 1.0, 8)))
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        dose_response(ax, DoseResponseInput(dose=dose, response=response,
+                                            ec50_guess=1.0))
+        assert ax.get_xscale() == "symlog", (
+            f"zero-dose control should trigger symlog, got {ax.get_xscale()}"
+        )
+        # The error-bar container holds all plotted points, including the zero-dose one.
+        containers = ax.containers
+        assert containers, "expected at least one error-bar container"
+        xs = containers[0][0].get_xdata()
+        assert len(xs) == len(dose), (
+            f"expected all {len(dose)} doses to be plotted; got {len(xs)}"
+        )
+        assert 0.0 in set(np.asarray(xs, dtype=float)), (
+            "zero-dose control was dropped from the plot"
         )
     finally:
         plt.close(fig)

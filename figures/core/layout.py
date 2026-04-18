@@ -125,6 +125,13 @@ def figure_with_grid(
         gridspec_kw={"hspace": hspace, "wspace": wspace},
         layout="constrained",
     )
+    # Themes that clamp figure width to a journal column (Nature/PNAS/NCB)
+    # can only act once the figure exists. Re-dispatch with the fig so the
+    # venue-specific sizing actually runs.
+    if theme is not None and str(theme).lower() not in {"default", "base", ""}:
+        from ..themes import apply_theme as _apply_theme
+
+        _apply_theme(theme, fig)
     flat = axes_grid.reshape(-1).tolist()
     panels = flat[:n_panels]
     # Remove unused cells entirely so the layout engine ignores them.
