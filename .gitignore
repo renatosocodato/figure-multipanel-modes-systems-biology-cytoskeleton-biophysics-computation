@@ -8,6 +8,7 @@ dist/
 *.egg-info/
 .DS_Store
 outputs/
+figures/outputs/
 .Rhistory
 .RData
 *.log
