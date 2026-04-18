@@ -1,0 +1,1 @@
+"""Manuscript package stub."""
