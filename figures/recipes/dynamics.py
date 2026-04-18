@@ -171,9 +171,19 @@ def bifurcation(ax, contract, palette: str = "home_gate_trap"):
         else:
             ls, color = style_of.get(name.lower(), ("-", "#111111"))
         ax.plot(c.r, arr, linestyle=ls, color=color, linewidth=1.4, label=name)
-    if c.saddle_node is not None:
-        ax.scatter([c.saddle_node], [np.nan_to_num(np.interp(c.saddle_node, c.r, list(c.branches.values())[0]))],
-                   marker="*", s=80, color="#111", zorder=6)
+    if c.saddle_node is not None and c.saddle_node_branch is not None:
+        branch_name = c.saddle_node_branch
+        if branch_name not in c.branches:
+            raise KeyError(
+                f"saddle_node_branch={branch_name!r} not present in branches: "
+                f"{sorted(c.branches)}"
+            )
+        branch_arr = np.asarray(c.branches[branch_name], dtype=float)
+        finite = np.isfinite(branch_arr)
+        if finite.any():
+            sn_y = float(np.interp(c.saddle_node, c.r[finite], branch_arr[finite]))
+            ax.scatter([c.saddle_node], [sn_y], marker="*", s=80, color="#111",
+                       zorder=6)
     ax.set_xlabel("bifurcation parameter")
     ax.set_ylabel("state")
     ax.legend(fontsize=7.5, frameon=False)
@@ -189,7 +199,7 @@ def demo_bifurcation() -> BifurcationInput:
     trap = np.full_like(r, 2.25)
     return BifurcationInput(r=r, branches={"home": home, "hgs": hgs,
                                            "gate": gate, "trap": trap},
-                            saddle_node=0.45)
+                            saddle_node=0.45, saddle_node_branch="home")
 
 
 def nullclines(ax, contract, palette: str = "okabe_ito"):

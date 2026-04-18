@@ -205,7 +205,10 @@ class DynamicsInput(FigureContract):
 class BifurcationInput(FigureContract):
     r: NPArray
     branches: dict  # name -> 1D array over r; NaN marks the gap
-    saddle_node: Optional[float] = None
+    saddle_node: Optional[float] = None  # x-coordinate of the bifurcation
+    #: Name of the branch whose value at ``saddle_node`` defines the marker's y.
+    #: Required when ``saddle_node`` is set; without it the marker is skipped.
+    saddle_node_branch: Optional[str] = None
 
 
 class LimitCycleInput(FigureContract):

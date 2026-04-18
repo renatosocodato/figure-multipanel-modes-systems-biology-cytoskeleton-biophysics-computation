@@ -110,15 +110,20 @@ def trajectory_overlay(ax, contract, palette: str = "timepoint_gradient"):
     pal = get_palette(palette)
     cm = colormaps.get_cmap(pal.continuous)
     ax.scatter(emb[:, 0], emb[:, 1], c=pt, cmap=cm, s=10, linewidth=0, alpha=0.85)
-    # Quiver toward next-pseudotime neighbour of each point.
+    # Quiver toward next-pseudotime neighbour of each point. We use adjacent
+    # pairs in sorted pseudotime order (src -> dst) instead of wrapping, so
+    # the terminal point does not generate a spurious long arrow back to the
+    # start — pseudotime is not cyclic by default.
     order = np.argsort(pt)
-    idx_next = np.roll(order, -1)
-    dx = emb[idx_next, 0] - emb[order, 0]
-    dy = emb[idx_next, 1] - emb[order, 1]
-    step = max(1, len(order) // 40)
-    ax.quiver(emb[order[::step], 0], emb[order[::step], 1],
-              dx[::step], dy[::step], angles="xy", scale_units="xy", scale=1.0,
-              color="#111", width=0.003, alpha=0.6)
+    if len(order) >= 2:
+        src = order[:-1]
+        dst = order[1:]
+        dx = emb[dst, 0] - emb[src, 0]
+        dy = emb[dst, 1] - emb[src, 1]
+        step = max(1, len(src) // 40)
+        ax.quiver(emb[src[::step], 0], emb[src[::step], 1],
+                  dx[::step], dy[::step], angles="xy", scale_units="xy", scale=1.0,
+                  color="#111", width=0.003, alpha=0.6)
     ax.set_xticks([]); ax.set_yticks([])
     callout_box(ax, 0.02, 0.96, "pseudotime →", ha="left", va="top",
                 color="#333333")

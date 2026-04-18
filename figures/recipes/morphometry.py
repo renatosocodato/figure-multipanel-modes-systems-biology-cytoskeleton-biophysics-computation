@@ -75,6 +75,12 @@ def airyscan_panel_grid(ax, contract, palette: str = "okabe_ito"):
     if imgs.ndim != 3:
         raise ValueError("images must be (n, h, w)")
     n = imgs.shape[0]
+    if n == 0:
+        ax.set_axis_off()
+        ax.text(0.5, 0.5, "no thumbnails",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=8, color="#6B7280", style="italic")
+        return ax
     cols = min(n, 4)
     rows = int(np.ceil(n / cols))
     ax.set_axis_off()
