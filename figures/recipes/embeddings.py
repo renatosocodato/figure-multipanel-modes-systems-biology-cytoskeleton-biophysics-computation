@@ -52,10 +52,20 @@ def umap_scatter(ax, contract, palette: str = "okabe_ito"):
         ZZ = kde(np.vstack([XX.ravel(), YY.ravel()])).reshape(XX.shape)
         ax.contour(XX, YY, ZZ, levels=5, colors="#455A64", linewidths=0.6, alpha=0.6)
     if c.highlight_ids:
-        meta = c.metadata.reset_index(drop=True)
-        matches = meta.index[meta.get("id", meta.index).isin(c.highlight_ids)]
-        ax.scatter(x[matches], y[matches], s=25, facecolor="none",
-                   edgecolor="#111", linewidth=1.0)
+        # Match against whichever column actually carries IDs in the caller's
+        # metadata — the DataFrame index by default (typical for single-cell
+        # adata.obs-style tables), falling back to an explicit ``id`` column.
+        wanted = set(c.highlight_ids)
+        meta = c.metadata
+        if "id" in meta.columns:
+            id_series = meta["id"]
+        else:
+            id_series = meta.index.to_series()
+        mask = id_series.isin(wanted).to_numpy()
+        matches = np.flatnonzero(mask)
+        if matches.size:
+            ax.scatter(x[matches], y[matches], s=25, facecolor="none",
+                       edgecolor="#111", linewidth=1.0)
     ax.set_xlabel("UMAP-1"); ax.set_ylabel("UMAP-2")
     ax.set_xticks([]); ax.set_yticks([])
     return ax

@@ -147,3 +147,44 @@ def test_dose_response_handles_zero_dose_control() -> None:
         )
     finally:
         plt.close(fig)
+
+
+def test_figure_with_grid_rejects_undersized_explicit_shape() -> None:
+    """Explicit shape with too few cells must raise, not silently drop panels (P2)."""
+
+    with pytest.raises(ValueError, match=r"cells but n_panels=4"):
+        figure_with_grid(4, shape=(1, 3), figsize="double")
+
+
+def test_umap_scatter_highlight_ids_match_metadata_index() -> None:
+    """highlight_ids must resolve against metadata.index when no 'id' column exists (P2)."""
+
+    import pandas as pd
+
+    from figures.core.contract import UMAPInput
+    from figures.recipes.embeddings import umap_scatter
+
+    apply_style()
+    n = 20
+    ids = [f"cell_{i:03d}" for i in range(n)]
+    emb = np.column_stack([np.linspace(0, 1, n), np.linspace(0, 1, n)])
+    meta = pd.DataFrame({"cluster": ["A"] * n}, index=ids)
+    targets = ["cell_003", "cell_010", "cell_015"]
+    contract = UMAPInput(embedding=emb, metadata=meta, color_col="cluster",
+                        continuous=False, density_contours=False,
+                        highlight_ids=targets)
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        umap_scatter(ax, contract)
+        # The unfilled highlight scatter renders as a collection with s=25.
+        highlight_layers = [
+            c for c in ax.collections
+            if c.get_sizes().size and np.isclose(c.get_sizes()[0], 25.0)
+        ]
+        assert highlight_layers, "highlight scatter missing"
+        n_marked = len(highlight_layers[-1].get_offsets())
+        assert n_marked == len(targets), (
+            f"expected {len(targets)} highlighted points, got {n_marked}"
+        )
+    finally:
+        plt.close(fig)

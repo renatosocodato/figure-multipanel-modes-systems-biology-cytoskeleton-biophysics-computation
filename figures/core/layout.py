@@ -118,6 +118,11 @@ def figure_with_grid(
 
     apply_style(theme)
     rows, cols = resolve_shape(n_panels, shape)
+    if rows * cols < n_panels:
+        raise ValueError(
+            f"shape={shape!r} yields {rows * cols} cells but n_panels={n_panels}; "
+            "panels would be silently dropped. Use 'auto' or widen the grid."
+        )
     w, h = _figsize_for(figsize)
     # constrained_layout handles hidden axes correctly; tight_layout warns on them.
     fig, axes_grid = plt.subplots(
