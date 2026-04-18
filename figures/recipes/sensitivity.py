@@ -30,26 +30,43 @@ from ..core.primitives import callout_box, dashed_reference, right_of_ci_label, 
 
 def sobol_bar(ax, contract, palette: str = "okabe_ito", *,
               which: str = "S1", cmap: str = "viridis", order: str = "descending"):
-    """Horizontal Sobol indices with CI whiskers and right-of-bar value labels."""
+    """Horizontal Sobol indices with CI whiskers and right-of-bar value labels.
+
+    ``which`` selects ``"S1"`` (first-order, default) or ``"ST"`` (total-order).
+    When ``which="ST"``, the contract **must** also supply ``ST`` values and
+    ``ST_ci`` — the recipe refuses to fall back to ``S1_ci`` because that would
+    render misleading error bars. If ``ST`` is provided without ``ST_ci``,
+    the whiskers are omitted rather than reusing first-order CIs.
+    """
 
     c = SobolInput.model_validate(contract)
-    values = c.ST if which.upper() == "ST" and c.ST is not None else c.S1
-    errs = c.ST_ci if which.upper() == "ST" and c.ST_ci is not None else c.S1_ci
+    which_key = which.upper()
+    if which_key == "ST":
+        if c.ST is None:
+            raise ValueError("sobol_bar(which='ST') requires SobolInput.ST")
+        values = np.asarray(c.ST, dtype=float)
+        errs = None if c.ST_ci is None else np.asarray(c.ST_ci, dtype=float)
+    else:
+        values = np.asarray(c.S1, dtype=float)
+        errs = np.asarray(c.S1_ci, dtype=float)
+
     ascending = order.lower() != "descending"
     idx = np.argsort(values)
     if not ascending:
         idx = idx[::-1]
     params = [c.parameters[i] for i in idx]
-    vals = np.asarray(values)[idx]
-    errs = np.asarray(errs)[idx]
+    vals = values[idx]
+    sorted_errs = errs[idx] if errs is not None else None
     cm = colormaps.get_cmap(cmap)
     colors = cm(np.linspace(0.18, 0.85, len(vals)))
-    ax.barh(params, vals, xerr=errs, color=colors, edgecolor="#222",
+    ax.barh(params, vals, xerr=sorted_errs, color=colors, edgecolor="#222",
             linewidth=0.5, error_kw=dict(ecolor="#333", lw=0.7, capsize=2))
-    for i, (v, e) in enumerate(zip(vals, errs)):
-        right_of_ci_label(ax, upper=v + e, y=i, text=smart_fmt(v), color="#222")
+    # Label placement: right of the upper CI if we have one, otherwise right of the bar.
+    label_offsets = vals + (sorted_errs if sorted_errs is not None else np.zeros_like(vals))
+    for i, (v, upper) in enumerate(zip(vals, label_offsets)):
+        right_of_ci_label(ax, upper=upper, y=i, text=smart_fmt(v), color="#222")
     ax.set_xlim(0, float(vals.max()) * 1.30 if len(vals) else 1.0)
-    ax.set_xlabel(f"Sobol {which.upper()}")
+    ax.set_xlabel(f"Sobol {which_key}")
     get_palette(palette)  # validate palette exists
     return ax
 

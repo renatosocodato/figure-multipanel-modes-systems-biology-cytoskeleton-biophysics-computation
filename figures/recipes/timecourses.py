@@ -181,11 +181,24 @@ def demo_fret_traces() -> TimecourseInput:
 
 
 def calcium_raster(ax, contract, palette: str = "okabe_ito"):
-    """Raster plot (cell rows, time columns) + population rate overlay."""
+    """Raster plot (cell rows, time columns) + population rate overlay.
+
+    Accepts an empty ``events`` table gracefully: the axes is annotated with
+    a ``"no events"`` placeholder and no histogram is computed, so upstream
+    filters that remove every event from a condition do not crash figure
+    generation.
+    """
 
     c = CalciumRasterInput.model_validate(contract)
     pal = iter_palette(get_palette(palette).categorical, 4)
     events = c.events
+    ax.set_xlabel(c.time_col)
+    ax.set_ylabel("cell")
+    if events is None or len(events) == 0:
+        ax.text(0.5, 0.5, "no events",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=8, color="#6B7280", style="italic")
+        return ax
     cells = list(events[c.cell_col].drop_duplicates().sort_values())
     y_of = {cell: idx for idx, cell in enumerate(cells)}
     ax.scatter(events[c.time_col], events[c.cell_col].map(y_of),
@@ -196,13 +209,11 @@ def calcium_raster(ax, contract, palette: str = "okabe_ito"):
     rate, edges = np.histogram(events[c.time_col].values, bins=bins)
     centers = 0.5 * (edges[:-1] + edges[1:])
     # Population rate on twin y on lower 20 %.
-    ax.set_ylabel("cell")
     ax2 = ax.twinx()
     ax2.fill_between(centers, 0, rate / max(rate.max(), 1), color=pal[1 % len(pal)],
                      alpha=0.35, linewidth=0)
     ax2.set_ylabel("rate (norm.)", color=pal[1 % len(pal)])
     ax2.spines["top"].set_visible(False)
-    ax.set_xlabel(c.time_col)
     return ax
 
 

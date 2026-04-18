@@ -188,3 +188,72 @@ def test_umap_scatter_highlight_ids_match_metadata_index() -> None:
         )
     finally:
         plt.close(fig)
+
+
+def test_sobol_bar_st_without_st_ci_omits_whiskers() -> None:
+    """which='ST' without ST_ci must not fall back to S1_ci (P2)."""
+
+    import pandas as pd  # noqa: F401 — keeps module style consistent with other tests.
+
+    from figures.core.contract import SobolInput
+    from figures.recipes.sensitivity import sobol_bar
+
+    apply_style()
+    contract = SobolInput(
+        parameters=["a", "b", "c"],
+        S1=np.array([0.6, 0.3, 0.1]),
+        S1_ci=np.array([0.10, 0.02, 0.005]),  # big enough to notice if misapplied
+        ST=np.array([0.8, 0.4, 0.2]),
+        # ST_ci intentionally omitted.
+    )
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        sobol_bar(ax, contract, which="ST")
+        # Error-bar whiskers render as a LineCollection attached to the bar container.
+        whisker_lines = [
+            c for c in ax.collections
+            if c.__class__.__name__ == "LineCollection"
+        ]
+        assert not whisker_lines, (
+            "ST without ST_ci should render without whiskers, not reuse S1_ci"
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_sobol_bar_st_without_st_values_raises() -> None:
+    """which='ST' requires ST values — missing ST must raise, not silently plot S1."""
+
+    from figures.core.contract import SobolInput
+    from figures.recipes.sensitivity import sobol_bar
+
+    apply_style()
+    contract = SobolInput(parameters=["a"], S1=np.array([0.5]),
+                          S1_ci=np.array([0.05]))
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        with pytest.raises(ValueError, match=r"requires SobolInput\.ST"):
+            sobol_bar(ax, contract, which="ST")
+    finally:
+        plt.close(fig)
+
+
+def test_calcium_raster_handles_empty_events() -> None:
+    """Empty events table must render a placeholder, not crash on NaN bins (P2)."""
+
+    import pandas as pd
+
+    from figures.core.contract import CalciumRasterInput
+    from figures.recipes.timecourses import calcium_raster
+
+    apply_style()
+    empty = pd.DataFrame({"cell_id": pd.Series([], dtype="int64"),
+                          "t": pd.Series([], dtype="float64")})
+    fig, ax = plt.subplots(figsize=(3, 2))
+    try:
+        calcium_raster(ax, CalciumRasterInput(events=empty))
+        assert any("no events" in t.get_text() for t in ax.texts)
+        # No twin-x axis should have been spawned in the empty case.
+        assert len(fig.get_axes()) == 1
+    finally:
+        plt.close(fig)
